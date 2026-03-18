@@ -1,1 +1,105 @@
-Read me doldurulacak
+# Flowless
+
+> Süreç insana uyar, insan sürece değil.
+
+Yazılım geliştirme süreçlerini izleyen, anlayan ve besleyen bir ajan sistemi. GitHub webhook ile commit'leri dinler, AI ile yorumlar ve dokümantasyon üretir, Slack ile ekibi bilgilendirir.
+
+## Hızlı Başlangıç
+
+```bash
+# Bağımlılıkları yükle
+npm install
+
+# .env dosyasını oluştur (aşağıdaki Ortam Değişkenleri bölümüne bakın)
+cp .env.example .env
+
+# Derle ve başlat
+npm run build
+npm start
+```
+
+- **Dashboard:** http://localhost:4000
+- **GitHub webhook:** `POST /webhook/github` (port 3000)
+
+## Ortam Değişkenleri
+
+`.env` dosyası oluşturun ve gerekli değerleri ayarlayın:
+
+| Değişken | Zorunlu | Açıklama |
+|----------|---------|----------|
+| `OPENAI_API_KEY` | Evet | OpenAI API anahtarı |
+| `OPENAI_MODEL` | Hayır | Model adı (varsayılan: gpt-4o) |
+| `GITHUB_WEBHOOK_SECRET` | Hayır | GitHub webhook imza doğrulaması. Yoksa mock input kullanılır |
+| `WEBHOOK_PORT` | Hayır | Webhook portu (varsayılan: 3000) |
+| `SLACK_WEBHOOK_URL` | Hayır | Slack Incoming Webhook URL. Varsa `notify_team` gerçek Slack'e gönderir |
+| `DASHBOARD_PORT` | Hayır | Dashboard portu (varsayılan: 4000) |
+
+## Konfigürasyon
+
+`flowless.config.yaml` ile tool'lar ve branch kuralları yapılandırılır:
+
+```yaml
+# Branch kuralları — hangi branch'te hangi tool'lar çalışsın
+branchRules:
+  main:
+    - generate_doc    # Commit'ten doküman üret
+    - notify_team    # Slack'e bildirim gönder
+  develop:
+    - log_event
+    - create_comment
+
+default:
+  - log_event
+```
+
+## Özellikler
+
+### Tool'lar
+
+| Tool | Açıklama |
+|------|----------|
+| `log_event` | Event'i loglar |
+| `generate_doc` | Commit mesajı ve değişen dosyalardan Markdown dokümantasyon üretir (Özet, Değişiklikler, Etkilenen Alanlar, Önerilen Sonraki Adımlar) |
+| `notify_team` | Ekibe Slack bildirimi gönderir. `generate_doc` ile birlikte çalışırsa zengin özet kullanır |
+| `update_ticket` | Ticket güncelleme (Jira vb.) |
+| `create_comment` | Yorum oluşturma |
+
+### GitHub Webhook Kurulumu
+
+1. `ngrok http 3000` ile tunnel açın
+2. GitHub repo → Settings → Webhooks → Add webhook
+3. Payload URL: `https://<ngrok-url>/webhook/github`
+4. Content type: `application/json`
+5. Secret: `.env` içindeki `GITHUB_WEBHOOK_SECRET`
+
+### Slack Bildirimi
+
+1. [Slack Incoming Webhooks](https://api.slack.com/messaging/webhooks) ile webhook oluşturun
+2. URL'yi `.env` dosyasına `SLACK_WEBHOOK_URL` olarak ekleyin
+3. `main` branch'e push yapıldığında otomatik bildirim gider
+
+## Proje Yapısı
+
+```
+flowless/
+├── core/                 # Agent, normalizer, LLM
+├── tools/                # generate_doc, notify_team, log_event, vb.
+├── inputs/               # GitHub webhook, mock
+├── config/               # YAML loader, branch kuralları
+├── dashboard/             # Dashboard UI ve API
+├── flowless.config.yaml  # Tool ve branch konfigürasyonu
+└── index.ts              # Ana giriş
+```
+
+## Scripts
+
+| Komut | Açıklama |
+|-------|----------|
+| `npm run build` | TypeScript derleme |
+| `npm start` | Uygulamayı başlat (webhook + dashboard) |
+| `npm run dashboard` | Sadece dashboard (webhook/OpenAI olmadan) |
+| `npm run dev` | TypeScript watch modu |
+
+## Mimari
+
+Detaylı mimari dökümanı için [project.md](./project.md) dosyasına bakın.
