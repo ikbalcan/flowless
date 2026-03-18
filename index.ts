@@ -11,7 +11,6 @@ import { Agent } from './core/agent.js'
 import { OpenAIProvider } from './core/llm/openai.js'
 import { MockInputConnector } from './inputs/mock.js'
 import { GitHubWebhookInputConnector } from './inputs/github-webhook.js'
-import { MockOutputConnector } from './connectors/mock.js'
 import { dashboardStore } from './dashboard/store.js'
 import { startDashboardServer } from './dashboard/server.js'
 import { loadConfig } from './config/loader.js'
@@ -31,8 +30,6 @@ function main() {
     activeConnectors: ['mock'],
   })
 
-  const mockOutput = new MockOutputConnector()
-
   const handleEvent = async (event: import('./core/interfaces.js').FlowlessEvent) => {
     dashboardStore.addEvent(event)
     console.log('[Flowless] Event alındı:', {
@@ -47,12 +44,11 @@ function main() {
     })
 
     try {
-      const actions = await agent.processEvent(event)
-      dashboardStore.addActions(event.id, actions)
-      console.log('[Flowless] Agent', actions.length, 'aksiyon üretti')
+      const processed = await agent.processEvent(event)
+      dashboardStore.addActions(event.id, processed.map((p) => p.action))
+      console.log('[Flowless] Agent', processed.length, 'aksiyon üretti')
 
-      for (const action of actions) {
-        const result = await mockOutput.execute(action)
+      for (const { action, result } of processed) {
         dashboardStore.updateActionResult(event.id, action.id, result)
         console.log('[Flowless] Action sonucu:', result.success ? '✓' : '✗', {
           type: action.type,

@@ -9,6 +9,8 @@ export interface StoredAction extends FlowlessAction {
   success?: boolean
   error?: string
   executedAt?: string
+  /** Tool sonucu (generate_doc content vb.) */
+  resultData?: unknown
 }
 
 export interface StoredEvent {
@@ -62,6 +64,7 @@ class DashboardStore {
     act.success = result.success
     act.error = result.error
     act.executedAt = new Date().toISOString()
+    act.resultData = result.data
   }
 
   getEvents(): StoredEvent[] {

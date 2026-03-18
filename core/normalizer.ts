@@ -82,6 +82,9 @@ export interface GitHubPushPayload {
     timestamp?: string
     author?: { name?: string; email?: string }
     url?: string
+    added?: string[]
+    removed?: string[]
+    modified?: string[]
   }
 }
 
@@ -114,6 +117,9 @@ export function normalizeGitHubPush(
         message: c.message,
         author: c.author?.name,
         timestamp: c.timestamp,
+        added: c.added ?? [],
+        removed: c.removed ?? [],
+        modified: c.modified ?? [],
       })),
       headCommit: headCommit
         ? {
@@ -121,6 +127,9 @@ export function normalizeGitHubPush(
             message: headCommit.message,
             author: headCommit.author?.name,
             timestamp: headCommit.timestamp,
+            added: headCommit.added ?? [],
+            removed: headCommit.removed ?? [],
+            modified: headCommit.modified ?? [],
           }
         : undefined,
       created: payload.created,

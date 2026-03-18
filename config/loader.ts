@@ -44,7 +44,12 @@ function findConfigDir(): string {
       current = join(current, '..')
     }
   }
-  return join(__dirname, '..')
+  return process.cwd()
+}
+
+/** Proje kök dizini (flowless.config.yaml'ın bulunduğu yer) */
+export function getProjectRoot(): string {
+  return findConfigDir()
 }
 
 export function loadConfig(): FlowlessConfig {

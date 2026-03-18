@@ -331,6 +331,32 @@
       border-radius: 0 6px 6px 0;
       color: var(--error);
     }
+    .action-ux .generated-doc-block {
+      margin-top: 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      background: rgba(0,0,0,0.2);
+    }
+    .action-ux .generated-doc-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      padding: 8px 12px;
+      background: rgba(99, 102, 241, 0.08);
+      border-bottom: 1px solid var(--border);
+    }
+    .action-ux .generated-doc-path { font-size: 11px; color: var(--accent); }
+    .action-ux .generated-doc-content {
+      padding: 12px;
+      font-size: 12px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 300px;
+      overflow-y: auto;
+    }
     .action-ux .tool-params-details { margin-top: 8px; }
     .action-ux .tool-params-details .detail-toggle {
       font-size: 11px;
@@ -512,6 +538,15 @@
       const error = a.error ? `
         <div class="error-block">${escapeHtml(a.error)}</div>
       ` : '';
+      const rd = a.resultData;
+      const genDoc = a.type === 'generate_doc' && rd && typeof rd === 'object' && 'content' in rd
+        ? `
+          <div class="generated-doc-block">
+            <div class="generated-doc-title">Üretilen dokümantasyon ${rd.filename ? '· ' + escapeHtml(rd.filename) : ''}</div>
+            ${rd.path ? `<div class="generated-doc-path">${escapeHtml(rd.path)}</div>` : ''}
+            <div class="generated-doc-content">${escapeHtml(String(rd.content ?? ''))}</div>
+          </div>
+        ` : '';
       return `
         <div class="action-ux">
           <div class="action-top">
@@ -522,6 +557,7 @@
           </div>
           ${paramsBlock}
           ${reasoning}
+          ${genDoc}
           ${error}
         </div>
       `;

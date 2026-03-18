@@ -4,10 +4,15 @@
  */
 
 import type { FlowlessEvent, FlowlessResult } from '../interfaces.js'
+import type { ILLMProvider } from '../llm/types.js'
 
 export interface IToolContext {
   event: FlowlessEvent
   params: Record<string, unknown>
+  /** LLM erişimi (generate_doc vb. için) */
+  llm?: ILLMProvider
+  /** Proje kök dizini */
+  projectRoot?: string
 }
 
 export interface ITool {

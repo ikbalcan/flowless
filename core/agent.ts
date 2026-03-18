@@ -4,11 +4,16 @@
  */
 
 import type { FlowlessEvent, FlowlessAction } from './interfaces.js'
+import type { FlowlessResult } from './interfaces.js'
 import type { ILLMProvider } from './llm/types.js'
+export interface ProcessedAction {
+  action: FlowlessAction
+  result: FlowlessResult
+}
 import { createContext, contextToPromptInput } from './context.js'
 import { getTool, getAllTools } from '../tools/index.js'
 import type { FlowlessConfig } from '../config/loader.js'
-import { getToolsForBranch } from '../config/loader.js'
+import { getToolsForBranch, getProjectRoot } from '../config/loader.js'
 
 function buildSystemPrompt(
   toolNames: string[],
@@ -58,7 +63,7 @@ export class Agent {
     this.agentConfig = agentConfig
   }
 
-  async processEvent(event: FlowlessEvent): Promise<FlowlessAction[]> {
+  async processEvent(event: FlowlessEvent): Promise<ProcessedAction[]> {
     const branch = this.getBranchFromEvent(event)
     const allowedTools = getToolsForBranch(this.agentConfig.config, branch)
 
@@ -93,7 +98,8 @@ export class Agent {
     })
 
     const selections = this.parseToolSelection(rawResponse)
-    const actions: FlowlessAction[] = []
+    const processed: ProcessedAction[] = []
+    const projectRoot = getProjectRoot()
 
     for (let i = 0; i < selections.length; i++) {
       const sel = selections[i]
@@ -111,19 +117,25 @@ export class Agent {
         payload: sel.params,
         reasoning: sel.reasoning,
       }
-      actions.push(action)
 
+      let result: FlowlessResult = { success: false, error: 'Tool çalıştırılmadı' }
       try {
-        await tool.execute({
+        result = await tool.execute({
           event,
           params: sel.params,
+          llm: this.agentConfig.llm,
+          projectRoot,
         })
       } catch (err) {
-        console.error(`[Agent] Tool execute hatası: ${sel.tool}`, err)
+        const msg = err instanceof Error ? err.message : String(err)
+        console.error(`[Agent] Tool execute hatası: ${sel.tool}`, msg)
+        result = { success: false, error: msg }
       }
+
+      processed.push({ action, result })
     }
 
-    return actions
+    return processed
   }
 
   private getBranchFromEvent(event: FlowlessEvent): string | undefined {
