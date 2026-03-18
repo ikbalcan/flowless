@@ -125,6 +125,8 @@ export class Agent {
           params: sel.params,
           llm: this.agentConfig.llm,
           projectRoot,
+          config: this.agentConfig.config,
+          selections: selections.map((s) => ({ tool: s.tool })),
         })
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)

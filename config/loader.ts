@@ -18,6 +18,8 @@ export interface FlowlessConfig {
   }
   branchRules?: Record<string, string[]>
   default?: string[]
+  /** Slack Incoming Webhook URL — config öncelikli, yoksa SLACK_WEBHOOK_URL env */
+  slack_webhook_url?: string
 }
 
 const DEFAULT_CONFIG: FlowlessConfig = {

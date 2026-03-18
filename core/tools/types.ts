@@ -13,6 +13,10 @@ export interface IToolContext {
   llm?: ILLMProvider
   /** Proje kök dizini */
   projectRoot?: string
+  /** Flowless config (slack_webhook_url vb.) */
+  config?: { slack_webhook_url?: string }
+  /** Bu event için seçilen tool listesi (notify_team mesajında kullanılır) */
+  selections?: Array<{ tool: string }>
 }
 
 export interface ITool {
