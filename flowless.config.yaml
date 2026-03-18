@@ -1,5 +1,8 @@
 # Flowless Proje Konfigürasyonu
 
+# Slack bildirimi (opsiyonel): SLACK_WEBHOOK_URL env değişkeni ile ayarla (.env dosyasında)
+# slack.com/apps → Incoming WebHooks → Add to Slack → URL'yi .env'e ekle
+
 project:
   name: flowless
 
