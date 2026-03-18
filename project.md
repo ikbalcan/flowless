@@ -253,9 +253,9 @@ Teknoloji bağımsızdır. REST API açar, üstüne istenen UI yazılabilir.
 - [ ] Uçtan uca test: GitHub commit → Jira ticket güncelle
 
 ### Faz 4 — Dashboard
-- [ ] Event store
-- [ ] REST API
-- [ ] Basit UI
+- [x] Event store
+- [x] REST API
+- [x] Basit UI
 
 ### Faz 5 — Yeni connector'lar
 - [ ] Azure DevOps

@@ -3,6 +3,7 @@
  * Flowless — Ana giriş noktası
  * Input: GitHub webhook (GITHUB_WEBHOOK_SECRET set) veya Mock
  * Output: Mock connector
+ * Dashboard: http://localhost:4000
  */
 
 import 'dotenv/config'
@@ -11,6 +12,8 @@ import { OpenAIProvider } from './core/llm/openai.js'
 import { MockInputConnector } from './inputs/mock.js'
 import { GitHubWebhookInputConnector } from './inputs/github-webhook.js'
 import { MockOutputConnector } from './connectors/mock.js'
+import { dashboardStore } from './dashboard/store.js'
+import { startDashboardServer } from './dashboard/server.js'
 
 function main() {
   if (!process.env.OPENAI_API_KEY) {
@@ -28,6 +31,7 @@ function main() {
   const mockOutput = new MockOutputConnector()
 
   const handleEvent = async (event: import('./core/interfaces.js').FlowlessEvent) => {
+    dashboardStore.addEvent(event)
     console.log('[Flowless] Event alındı:', {
       id: event.id,
       source: event.source,
@@ -41,10 +45,12 @@ function main() {
 
     try {
       const actions = await agent.processEvent(event)
+      dashboardStore.addActions(event.id, actions)
       console.log('[Flowless] Agent', actions.length, 'aksiyon üretti')
 
       for (const action of actions) {
         const result = await mockOutput.execute(action)
+        dashboardStore.updateActionResult(event.id, action.id, result)
         console.log('[Flowless] Action sonucu:', result.success ? '✓' : '✗', {
           type: action.type,
           reasoning: action.reasoning?.slice(0, 80),
@@ -72,6 +78,7 @@ function main() {
     console.log('[Flowless] Mock input aktif. Her 3 saniyede bir event gelecek.')
   }
 
+  startDashboardServer()
   console.log('[Flowless] Başlatıldı. Durdurmak için Ctrl+C')
 }
 

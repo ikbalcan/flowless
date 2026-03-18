@@ -94,7 +94,8 @@ export class GitHubWebhookInputConnector implements IInputConnector {
     }
 
     try {
-      const payload = JSON.parse(body) as GitHubPushPayload
+      const payloadJson = this.extractPayload(body, req.headers['content-type'])
+      const payload = JSON.parse(payloadJson) as GitHubPushPayload
       const event = normalizeGitHubPush(payload, deliveryId ?? `delivery_${Date.now()}`)
 
       this.onEventCallback?.(event)
@@ -106,6 +107,18 @@ export class GitHubWebhookInputConnector implements IInputConnector {
       res.writeHead(400, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ error: 'Invalid payload' }))
     }
+  }
+
+  /** application/json veya application/x-www-form-urlencoded destekler */
+  private extractPayload(body: string, contentType?: string): string {
+    const type = (contentType ?? '').split(';')[0].trim().toLowerCase()
+    if (type === 'application/x-www-form-urlencoded') {
+      const params = new URLSearchParams(body)
+      const payload = params.get('payload')
+      if (!payload) throw new Error('payload parametresi bulunamadı')
+      return payload
+    }
+    return body
   }
 
   private verifySignature(body: string, signature: string): boolean {
