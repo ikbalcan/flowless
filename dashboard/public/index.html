@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Flowless Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.1/marked.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.9/dist/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
   <style>
     * { box-sizing: border-box; }
     :root {
@@ -18,488 +18,178 @@
       --error: #ef4444;
       --accent: #6366f1;
     }
-    body {
-      margin: 0;
-      font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
-      background: var(--bg);
-      color: var(--text);
-      font-size: 13px;
-      line-height: 1.5;
-    }
-    .container {
-      max-width: 1000px;
-      margin: 0 auto;
-      padding: 24px;
-    }
-    header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 24px;
-      padding-bottom: 16px;
+    body { margin: 0; font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace; background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.5; }
+    .dashboard { display: flex; flex-direction: column; min-height: 100vh; max-width: 1400px; margin: 0 auto; }
+    /* Metrics */
+    .metrics-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      padding: 20px 24px;
       border-bottom: 1px solid var(--border);
+      background: var(--surface);
     }
-    h1 {
-      margin: 0;
-      font-size: 1.25rem;
-      font-weight: 600;
+    .metric-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
     }
-    .live {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--success);
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse { 50% { opacity: 0.5; } }
-    .event-list {
+    .metric-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 4px; }
+    .metric-value { font-size: 22px; font-weight: 600; color: var(--text); }
+    .metric-value.accent { color: var(--accent); }
+    .metric-value.success { color: var(--success); }
+    /* Main layout */
+    .main { display: flex; flex: 1; min-height: 0; }
+    .event-stream { flex: 1; overflow-y: auto; padding: 16px 24px; }
+    .side-panel {
+      width: 340px;
+      border-left: 1px solid var(--border);
+      background: var(--surface);
       display: flex;
       flex-direction: column;
-      gap: 16px;
-    }
-    .event-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
       overflow: hidden;
     }
-    .event-header {
-      display: flex;
-      align-items: center;
+    /* Event stream */
+    .stream-header { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .live { width: 6px; height: 6px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
+    @keyframes pulse { 50% { opacity: 0.5; } }
+    .stream-list { display: flex; flex-direction: column; gap: 2px; }
+    .stream-row {
+      display: grid;
+      grid-template-columns: 120px 90px 120px 1fr 50px;
       gap: 12px;
-      padding: 12px 16px;
-      background: rgba(99, 102, 241, 0.08);
-      border-bottom: 1px solid var(--border);
-    }
-    .event-source { font-weight: 600; color: var(--accent); }
-    .event-type { color: var(--muted); }
-    .event-time { margin-left: auto; color: var(--muted); font-size: 12px; }
-    .event-payload {
-      padding: 14px 16px;
-      font-size: 13px;
-      color: var(--text);
-      max-height: 400px;
-      overflow-y: auto;
-      overflow-x: auto;
-      line-height: 1.6;
-      word-break: break-word;
-    }
-    .event-payload pre { margin: 0; white-space: pre-wrap; word-break: break-word; }
-    .actions {
-      border-top: 1px solid var(--border);
-    }
-    .actions-title {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--muted);
-      padding: 12px 20px 8px;
-    }
-    .action {
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
-    }
-    .action:last-child { border-bottom: none; }
-    .action-header {
-      display: flex;
       align-items: center;
-      gap: 8px;
-      margin-bottom: 6px;
-    }
-    .action-type { font-weight: 500; }
-    .action-status {
-      width: 18px;
-      height: 18px;
-      border-radius: 4px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 10px;
-    }
-    .action-status.success { background: rgba(34, 197, 94, 0.2); color: var(--success); }
-    .action-status.error { background: rgba(239, 68, 68, 0.2); color: var(--error); }
-    .action-status.pending { background: rgba(113, 113, 122, 0.3); color: var(--muted); }
-    .action-reasoning {
-      font-size: 13px;
-      color: var(--text);
-      margin-top: 8px;
-      line-height: 1.6;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    .empty {
-      text-align: center;
-      padding: 48px;
-      color: var(--muted);
-    }
-    /* UX Payload - GitHub style */
-    .payload-ux { padding: 16px 20px; }
-    .payload-ux .repo-row {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 16px;
-    }
-    .payload-ux .repo-link {
-      color: var(--accent);
-      text-decoration: none;
-      font-weight: 600;
-      font-size: 15px;
-    }
-    .payload-ux .repo-link:hover { text-decoration: underline; }
-    .payload-ux .branch-pill {
-      background: rgba(99, 102, 241, 0.2);
-      color: var(--accent);
-      padding: 3px 10px;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: 500;
-    }
-    .payload-ux .meta-line {
-      font-size: 12px;
-      color: var(--muted);
-      margin-bottom: 14px;
-    }
-    .payload-ux .commits-section {
-      border-top: 1px solid var(--border);
-      padding-top: 14px;
-    }
-    .payload-ux .commits-title {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--muted);
-      margin-bottom: 10px;
-    }
-    .payload-ux .commit-item {
-      display: flex;
-      gap: 12px;
-      padding: 10px 12px;
-      background: rgba(0,0,0,0.2);
-      border-radius: 6px;
-      margin-bottom: 8px;
-      border-left: 3px solid var(--accent);
-    }
-    .payload-ux .commit-item:last-child { margin-bottom: 0; }
-    .payload-ux .commit-hash {
-      font-size: 11px;
-      color: var(--muted);
-      font-family: ui-monospace, monospace;
-      min-width: 44px;
-      flex-shrink: 0;
-    }
-    .payload-ux .commit-hash a {
-      color: var(--muted);
-      text-decoration: none;
-    }
-    .payload-ux .commit-hash a:hover { color: var(--accent); }
-    .payload-ux .commit-body { flex: 1; min-width: 0; }
-    .payload-ux .commit-msg {
-      font-size: 13px;
-      color: var(--text);
-      line-height: 1.5;
-      margin-bottom: 4px;
-    }
-    .payload-ux .commit-meta {
-      font-size: 11px;
-      color: var(--muted);
-    }
-    .payload-ux .commit-detail {
-      margin-top: 8px;
-      padding-top: 8px;
-      border-top: 1px dashed var(--border);
-    }
-    .payload-ux .detail-toggle {
-      font-size: 11px;
-      color: var(--accent);
-      cursor: pointer;
-      user-select: none;
-    }
-    .payload-ux .detail-toggle:hover { opacity: 0.9; }
-    .payload-ux .commit-full-msg {
-      font-size: 12px;
-      white-space: pre-wrap;
-      margin: 6px 0 0;
-      padding: 8px;
-      background: rgba(0,0,0,0.2);
-      border-radius: 4px;
-    }
-    .payload-ux .tech-details {
-      margin-top: 12px;
-      padding: 10px 12px;
-      background: rgba(0,0,0,0.15);
-      border-radius: 6px;
-      font-size: 11px;
-      font-family: ui-monospace, monospace;
-      color: var(--muted);
-    }
-    /* Fallback payload - key-value */
-    .payload-fallback {
-      padding: 14px 16px;
-      font-size: 12px;
-      color: var(--text);
-    }
-    .raw-details { margin-top: 14px; }
-    .raw-details .raw-toggle {
-      font-size: 11px;
-      color: var(--muted);
-      cursor: pointer;
-      user-select: none;
-    }
-    .raw-details .raw-toggle:hover { color: var(--accent); }
-    .raw-details pre {
-      margin-top: 8px;
-      padding: 10px;
-      background: rgba(0,0,0,0.3);
-      border-radius: 6px;
-      font-size: 11px;
-      max-height: 200px;
-      overflow-y: auto;
-    }
-    .payload-fallback pre {
-      margin: 0;
-      white-space: pre-wrap;
-      word-break: break-word;
-      max-height: 300px;
-      overflow-y: auto;
-    }
-    /* Action UX */
-    .action-ux {
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border);
-      background: rgba(0,0,0,0.08);
-    }
-    .action-ux:last-child { border-bottom: none; }
-    .action-ux .action-top {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-    .action-ux .action-status {
-      width: 24px;
-      height: 24px;
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      font-weight: 600;
-    }
-    .action-ux .action-type-pill {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 500;
-    }
-    .action-ux .action-arrow {
-      color: var(--muted);
-      font-size: 14px;
-    }
-    .action-ux .action-target {
-      background: rgba(99, 102, 241, 0.15);
-      color: var(--accent);
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 12px;
-    }
-    .action-ux .reasoning-block {
-      background: rgba(99, 102, 241, 0.06);
-      border-left: 4px solid var(--accent);
-      padding: 12px 14px;
-      margin-top: 12px;
-      border-radius: 0 6px 6px 0;
-      font-size: 13px;
-      line-height: 1.65;
-      color: var(--text);
-      white-space: pre-wrap;
-    }
-    .action-ux .reasoning-label {
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-    .action-ux .error-block {
-      background: rgba(239, 68, 68, 0.08);
-      border-left: 4px solid var(--error);
-      padding: 12px 14px;
-      margin-top: 12px;
-      border-radius: 0 6px 6px 0;
-      color: var(--error);
-    }
-    .action-ux .generated-doc-block {
-      margin-top: 14px;
-      border: 2px solid var(--success);
-      border-radius: 8px;
-      overflow: hidden;
-      background: rgba(34, 197, 94, 0.08);
-    }
-    .action-ux .generated-doc-title {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--success);
       padding: 10px 14px;
-      background: rgba(34, 197, 94, 0.12);
-      border-bottom: 1px solid rgba(34, 197, 94, 0.3);
-    }
-    .action-ux .generated-doc-path {
-      font-size: 11px;
-      color: var(--accent);
-      padding: 6px 14px;
-      background: rgba(0,0,0,0.15);
-    }
-    .action-ux .generated-doc-content {
-      padding: 12px 14px;
-      font-size: 12px;
-      line-height: 1.6;
-      word-break: break-word;
-      max-height: 400px;
-      overflow-y: auto;
-    }
-    .action-ux .generated-doc-content.doc-raw {
-      white-space: pre-wrap;
-      font-family: ui-monospace, monospace;
-    }
-    .action-ux .doc-view-toggles {
-      display: flex;
-      gap: 4px;
-      padding: 6px 14px;
-      background: rgba(0,0,0,0.2);
-      border-bottom: 1px solid var(--border);
-    }
-    .action-ux .doc-toggle {
-      font-size: 11px;
-      padding: 4px 10px;
-      border-radius: 4px;
-      border: 1px solid var(--border);
       background: var(--surface);
-      color: var(--muted);
-      cursor: pointer;
-      font-family: inherit;
-    }
-    .action-ux .doc-toggle:hover { color: var(--text); border-color: var(--muted); }
-    .action-ux .doc-toggle.active { background: var(--accent); color: white; border-color: var(--accent); }
-    .action-ux .doc-preview.markdown-body h2 { font-size: 14px; margin: 16px 0 8px; color: var(--text); }
-    .action-ux .doc-preview.markdown-body h2:first-child { margin-top: 0; }
-    .action-ux .doc-preview.markdown-body p { margin: 0 0 10px; }
-    .action-ux .doc-preview.markdown-body ul { margin: 0 0 10px; padding-left: 20px; }
-    .action-ux .doc-preview.markdown-body li { margin: 4px 0; }
-    .action-ux .doc-preview.markdown-body code { background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; font-size: 11px; }
-    .action-ux .tool-params-details { margin-top: 8px; }
-    .action-ux .tool-params-details .detail-toggle {
-      font-size: 11px;
-      color: var(--muted);
-      cursor: pointer;
-    }
-    .action-ux .tool-params-details .detail-toggle:hover { color: var(--accent); }
-    .action-ux .tool-params-json {
-      margin-top: 6px;
-      padding: 8px 10px;
-      background: rgba(0,0,0,0.2);
-      border-radius: 4px;
-      font-size: 11px;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    .action-ux .reasoning-details summary {
-      cursor: pointer;
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--muted);
-      margin-bottom: 6px;
-      user-select: none;
-    }
-    .action-ux .reasoning-details summary:hover { color: var(--accent); }
-    .action-ux .reasoning-preview {
-      color: var(--text);
-      margin-top: 8px;
-    }
-    .action-ux .reasoning-expand {
-      color: var(--accent);
+      border: 1px solid transparent;
+      border-radius: 6px;
       cursor: pointer;
       font-size: 12px;
-      margin-top: 4px;
+      transition: background 0.15s, border-color 0.15s;
     }
-    .action-ux .reasoning-expand:hover { text-decoration: underline; }
-    /* Markdown preview */
-    .doc-view-toggles { display: flex; gap: 0; padding: 6px 12px; background: rgba(0,0,0,0.2); border-bottom: 1px solid var(--border); }
-    .doc-toggle {
-      padding: 4px 12px;
-      font-size: 11px;
-      cursor: pointer;
-      border: none;
-      background: transparent;
-      color: var(--muted);
-      border-radius: 4px;
+    .stream-row:hover { background: rgba(99, 102, 241, 0.06); border-color: var(--border); }
+    .stream-row .time { color: var(--muted); font-size: 11px; }
+    .stream-row .source { color: var(--accent); font-weight: 500; }
+    .stream-row .type { color: var(--text); }
+    .stream-row .tools { color: var(--muted); font-size: 11px; }
+    .stream-row .status { font-size: 14px; }
+    .stream-row .status.ok { color: var(--success); }
+    .stream-row .status.fail { color: var(--error); }
+    .stream-row .status.pending { color: var(--muted); }
+    .empty-stream { padding: 48px; text-align: center; color: var(--muted); }
+    /* Drawer */
+    .drawer-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100;
+      opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s;
     }
-    .doc-toggle:hover { color: var(--text); }
-    .doc-toggle.active { color: var(--accent); font-weight: 600; background: rgba(99, 102, 241, 0.15); }
-    .doc-preview.markdown-body h1, .doc-preview.markdown-body h2, .doc-preview.markdown-body h3 {
-      margin-top: 1em; margin-bottom: 0.5em; font-weight: 600; color: var(--text);
+    .drawer-overlay.open { opacity: 1; visibility: visible; }
+    .drawer {
+      position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 95vw); background: var(--surface);
+      border-left: 1px solid var(--border); z-index: 101; overflow-y: auto;
+      transform: translateX(100%); transition: transform 0.25s ease;
     }
-    .doc-preview.markdown-body h2 { font-size: 1.1em; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
-    .doc-preview.markdown-body ul { margin: 0.5em 0; padding-left: 1.5em; }
-    .doc-preview.markdown-body li { margin: 0.25em 0; }
-    .doc-preview.markdown-body p { margin: 0.5em 0; }
-    .doc-preview.markdown-body code { background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
-    .doc-preview.markdown-body pre { background: rgba(0,0,0,0.3); padding: 12px; border-radius: 6px; overflow-x: auto; }
-    .doc-preview.markdown-body pre code { background: none; padding: 0; }
+    .drawer.open { transform: translateX(0); }
+    .drawer-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); background: rgba(99, 102, 241, 0.08); }
+    .drawer-title { font-size: 14px; font-weight: 600; }
+    .drawer-close { background: none; border: none; color: var(--muted); cursor: pointer; padding: 4px; font-size: 18px; line-height: 1; }
+    .drawer-close:hover { color: var(--text); }
+    .drawer-body { padding: 20px; }
+    .drawer-body .event-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 0; }
+    /* Side panel */
+    .panel-section { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+    .panel-section:last-child { border-bottom: none; }
+    .panel-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 12px; }
+    .panel-doc { font-size: 12px; max-height: 180px; overflow-y: auto; }
+    .panel-doc .doc-preview { padding: 0; }
+    .panel-doc .doc-preview.markdown-body h2 { font-size: 13px; }
+    .panel-item { padding: 8px 0; font-size: 12px; color: var(--text); border-bottom: 1px dashed var(--border); }
+    .panel-item:last-child { border-bottom: none; }
+    .panel-item small { color: var(--muted); }
+    .panel-tool { display: flex; justify-content: space-between; padding: 6px 0; font-size: 12px; color: var(--text); }
+    .panel-tool span:last-child { color: var(--muted); }
+    .panel-empty { color: var(--muted); font-size: 12px; }
+    /* Reused from old dashboard */
+    .payload-ux, .payload-fallback { padding: 12px 16px; font-size: 12px; }
+    .payload-ux .repo-link { color: var(--accent); text-decoration: none; }
+    .payload-ux .branch-pill { background: rgba(99,102,241,0.2); color: var(--accent); padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-left: 8px; }
+    .payload-ux .commit-item { padding: 8px 10px; background: rgba(0,0,0,0.2); border-radius: 6px; margin-bottom: 6px; border-left: 3px solid var(--accent); }
+    .raw-details summary { font-size: 11px; color: var(--muted); cursor: pointer; }
+    .action-ux { padding: 12px 16px; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.05); }
+    .action-ux .action-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .action-ux .action-status { width: 20px; height: 20px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 11px; }
+    .action-ux .action-status.success { background: rgba(34,197,94,0.2); color: var(--success); }
+    .action-ux .action-status.error { background: rgba(239,68,68,0.2); color: var(--error); }
+    .action-ux .reasoning-block { font-size: 12px; padding: 10px 12px; background: rgba(99,102,241,0.06); border-left: 4px solid var(--accent); margin-top: 8px; border-radius: 0 6px 6px 0; white-space: pre-wrap; }
+    .action-ux .generated-doc-block { margin-top: 10px; border: 1px solid var(--success); border-radius: 6px; overflow: hidden; }
+    .action-ux .generated-doc-content { padding: 10px 12px; font-size: 11px; max-height: 200px; overflow-y: auto; }
+    .action-ux .doc-view-toggles { display: flex; gap: 4px; padding: 4px 8px; background: rgba(0,0,0,0.2); }
+    .action-ux .doc-toggle { font-size: 10px; padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; }
+    .action-ux .doc-toggle.active { background: var(--accent); color: white; border-color: var(--accent); }
+    .doc-preview.markdown-body h2 { font-size: 12px; margin: 10px 0 6px; }
+    .doc-preview.markdown-body ul { padding-left: 16px; margin: 4px 0; }
+    .doc-preview.markdown-body code { background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 3px; font-size: 10px; }
+    .actions-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); padding: 10px 16px 6px; }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <div class="live"></div>
-      <h1>Flowless Dashboard</h1>
-    </header>
-    <div class="event-list" id="eventList"></div>
+  <div class="dashboard">
+    <div class="metrics-bar" id="metricsBar"></div>
+    <div class="main">
+      <div class="event-stream">
+        <div class="stream-header"><span class="live"></span> Event stream (son 50)</div>
+        <div class="stream-list" id="streamList"></div>
+      </div>
+      <div class="side-panel">
+        <div class="panel-section">
+          <div class="panel-title">Son dokümantasyon</div>
+          <div id="panelDoc" class="panel-doc"></div>
+        </div>
+        <div class="panel-section">
+          <div class="panel-title">Son bildirimler</div>
+          <div id="panelNotifications"></div>
+        </div>
+        <div class="panel-section">
+          <div class="panel-title">Kullanılan toollar</div>
+          <div id="panelTools"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="drawer-overlay" id="drawerOverlay"></div>
+  <div class="drawer" id="drawer">
+    <div class="drawer-header">
+      <span class="drawer-title" id="drawerTitle">Event detayı</span>
+    </div>
+    <div class="drawer-body" id="drawerBody"></div>
   </div>
   <script>
-    const eventList = document.getElementById('eventList');
     const API = '/api/events';
-    
+    const MAX_STREAM = 50;
+    const todayStart = () => { const d = new Date(); d.setHours(0,0,0,0); return d.getTime(); };
     function escapeHtml(s) {
       if (s == null) return '';
-      const t = String(s);
-      return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
-    function statusClass(a) {
-      if (a.success === true) return 'success';
-      if (a.success === false) return 'error';
-      return 'pending';
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
     function statusIcon(a) {
       if (a.success === true) return '✓';
       if (a.success === false) return '✗';
       return '…';
     }
-    function shortHash(id) {
-      if (!id || typeof id !== 'string') return '-';
-      return id.slice(0, 7);
-    }
+    function shortHash(id) { return (!id || typeof id !== 'string') ? '-' : id.slice(0,7); }
     function formatRelTime(ts) {
       if (!ts) return '';
-      const d = new Date(ts);
-      const s = (Date.now() - d.getTime()) / 1000;
+      const s = (Date.now() - new Date(ts).getTime()) / 1000;
       if (s < 60) return 'az önce';
       if (s < 3600) return Math.floor(s/60) + ' dk önce';
       if (s < 86400) return Math.floor(s/3600) + ' saat önce';
-      return d.toLocaleDateString('tr-TR');
+      return new Date(ts).toLocaleDateString('tr-TR');
     }
     function firstLine(msg) {
       if (!msg) return '';
       const t = String(msg);
       const i = t.indexOf('\n');
-      return i > 0 ? t.slice(0, i) : t;
+      return i > 0 ? t.slice(0,i) : t;
     }
     function renderMarkdown(md) {
       if (!md) return '';
@@ -508,18 +198,30 @@
           const html = typeof marked.parse === 'function' ? marked.parse(md, { gfm: true }) : marked(md);
           return typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(html) : html;
         }
-      } catch (e) { return escapeHtml(md); }
+      } catch (_) {}
       return escapeHtml(md);
     }
-    function renderPayload(payload, source, type, eventId) {
+    function computeMetrics(events) {
+      const t0 = todayStart();
+      let eventsToday = 0, totalActions = 0, successCount = 0, failCount = 0;
+      const toolCounts = {};
+      for (const e of events) {
+        if (new Date(e.timestamp).getTime() >= t0) eventsToday++;
+        for (const a of e.actions || []) {
+          totalActions++;
+          toolCounts[a.type] = (toolCounts[a.type] || 0) + 1;
+          if (a.success === true) successCount++;
+          else if (a.success === false) failCount++;
+        }
+      }
+      const completed = successCount + failCount;
+      const successRate = completed > 0 ? Math.round((successCount / completed) * 100) : 0;
+      const topTool = Object.entries(toolCounts).sort((a,b) => b[1]-a[1])[0];
+      return { eventsToday, totalActions, successRate, topTool: topTool ? topTool[0] : '-', topToolCount: topTool ? topTool[1] : 0 };
+    }
+    function renderPayload(payload, source, type) {
       const p = payload || {};
       const raw = escapeHtml(JSON.stringify(payload, null, 2));
-      const rawBlock = `
-        <details class="raw-details">
-          <summary class="raw-toggle">Ham JSON göster</summary>
-          <pre>${raw}</pre>
-        </details>
-      `;
       if (source === 'github' && (p.repository || p.commits)) {
         const repo = p.repository || '';
         const repoUrl = p.repositoryUrl || (repo ? 'https://github.com/' + repo : '');
@@ -530,139 +232,146 @@
         const author = (c) => (typeof c.author === 'string' ? c.author : c.author?.name) || '?';
         return `
           <div class="payload-ux">
-            <div class="repo-row">
-              ${repoUrl ? `<a class="repo-link" href="${escapeHtml(repoUrl)}" target="_blank" rel="noopener">${escapeHtml(repo)}</a>` : `<span class="repo-link">${escapeHtml(repo)}</span>`}
+            <div style="margin-bottom:8px">
+              ${repoUrl ? `<a class="repo-link" href="${escapeHtml(repoUrl)}" target="_blank" rel="noopener">${escapeHtml(repo)}</a>` : escapeHtml(repo)}
               <span class="branch-pill">${escapeHtml(branch)}</span>
             </div>
-            <div class="meta-line">${count} commit · @${escapeHtml(pusher)} tarafından push edildi</div>
-            ${commits.length ? `
-              <div class="commits-section">
-                <div class="commits-title">Commitler</div>
-                ${commits.map(c => {
-                  const url = repoUrl ? repoUrl + '/commit/' + (c.id || '') : '#';
-                  const msg = c.message || '';
-                  const msgFirst = firstLine(msg);
-                  const hasDetail = msg.includes('\n') || msg.length > 60;
-                  const detailBlock = hasDetail ? `
-                    <details class="commit-detail">
-                      <summary class="detail-toggle">Detay</summary>
-                      <pre class="commit-full-msg">${escapeHtml(msg)}</pre>
-                    </details>
-                  ` : '';
-                  return `
-                    <div class="commit-item">
-                      <div class="commit-hash">${c.id ? `<a href="${url}" target="_blank" rel="noopener" title="${escapeHtml(c.id)}">${shortHash(c.id)}</a>` : '-'}</div>
-                      <div class="commit-body">
-                        <div class="commit-msg">${escapeHtml(msgFirst)}</div>
-                        <div class="commit-meta">${escapeHtml(author(c))} · ${formatRelTime(c.timestamp)}</div>
-                        ${detailBlock}
-                      </div>
-                    </div>`;
-                }).join('')}
+            <div style="font-size:11px;color:var(--muted);margin-bottom:10px">${count} commit · @${escapeHtml(pusher)}</div>
+            ${commits.length ? commits.map(c => `
+              <div class="commit-item">
+                <div style="font-size:10px;color:var(--muted)">${c.id ? shortHash(c.id) : '-'}</div>
+                <div style="font-size:12px">${escapeHtml(firstLine(c.message || ''))}</div>
+                <div style="font-size:10px;color:var(--muted)">${escapeHtml(author(c))} · ${formatRelTime(c.timestamp)}</div>
               </div>
-            ` : ''}
-            <details class="raw-details">
-              <summary class="raw-toggle">Teknik detay (before/after, flags)</summary>
-              <div class="tech-details">
-                before: ${escapeHtml(p.before || '-')}<br>
-                after: ${escapeHtml(p.after || '-')}<br>
-                created: ${!!p.created} · deleted: ${!!p.deleted} · forced: ${!!p.forced}
-              </div>
-            </details>
-            ${rawBlock}
+            `).join('') : ''}
+            <details class="raw-details" style="margin-top:10px"><summary>Ham JSON</summary><pre style="font-size:10px;max-height:120px;overflow:auto">${raw}</pre></details>
           </div>
         `;
       }
-      return `
-        <div class="payload-fallback">
-          <details class="raw-details">
-            <summary class="raw-toggle">Detay göster</summary>
-            <pre>${raw}</pre>
-          </details>
-        </div>
-      `;
+      return `<div class="payload-fallback"><details class="raw-details"><summary>Detay</summary><pre style="font-size:11px">${raw}</pre></details></div>`;
     }
-    
     function renderAction(a) {
-      const statusCls = statusClass(a);
       const icon = statusIcon(a);
-      const params = a.payload && typeof a.payload === 'object' && Object.keys(a.payload).length > 0;
-      const paramsBlock = params ? `
-        <details class="tool-params-details">
-          <summary class="detail-toggle">Parametreler</summary>
-          <pre class="tool-params-json">${escapeHtml(JSON.stringify(a.payload, null, 2))}</pre>
-        </details>
-      ` : '';
-      const reasoning = a.reasoning ? (() => {
-        const r = a.reasoning;
-        const openByDefault = r.length <= 200;
-        return `
-          <details class="reasoning-details" ${openByDefault ? 'open' : ''}>
-            <summary>Tool seçim gerekçesi ${!openByDefault ? '(tıkla detay)' : ''}</summary>
-            <div class="reasoning-block">${escapeHtml(r)}</div>
-          </details>
-        `;
-      })() : '';
-      const error = a.error ? `
-        <div class="error-block">${escapeHtml(a.error)}</div>
-      ` : '';
+      const statusCls = a.success === true ? 'success' : (a.success === false ? 'error' : 'pending');
       const rd = a.resultData;
       const rawContent = rd && typeof rd === 'object' ? String(rd.content ?? '') : '';
-      const genDoc = a.type === 'generate_doc' && rd && typeof rd === 'object'
-        ? `
-          <div class="generated-doc-block">
-            <div class="generated-doc-title">Üretilen dokümantasyon ${rd.filename ? '· ' + escapeHtml(String(rd.filename)) : ''}</div>
-            ${rd.path ? `<div class="generated-doc-path">📄 ${escapeHtml(String(rd.path))}</div>` : ''}
-            <div class="doc-view-toggles">
-              <button type="button" class="doc-toggle active" data-mode="preview">Preview</button>
-              <button type="button" class="doc-toggle" data-mode="raw">&lt;/&gt;</button>
-            </div>
-            <div class="generated-doc-content doc-preview markdown-body">${rawContent ? renderMarkdown(rawContent) : '(içerik yok)'}</div>
-            <div class="generated-doc-content doc-raw" style="display:none">${rawContent ? escapeHtml(rawContent) : '(içerik yok)'}</div>
+      const genDoc = a.type === 'generate_doc' && rd && typeof rd === 'object' && rawContent ? `
+        <div class="generated-doc-block">
+          <div class="doc-view-toggles">
+            <button type="button" class="doc-toggle active" data-mode="preview">Preview</button>
+            <button type="button" class="doc-toggle" data-mode="raw">&lt;/&gt;</button>
           </div>
-        ` : '';
+          <div class="generated-doc-content doc-preview markdown-body">${renderMarkdown(rawContent)}</div>
+          <div class="generated-doc-content doc-raw" style="display:none;white-space:pre-wrap">${escapeHtml(rawContent)}</div>
+        </div>
+      ` : '';
       return `
         <div class="action-ux">
           <div class="action-top">
             <span class="action-status ${statusCls}">${icon}</span>
-            <span class="action-type-pill" title="Tool">${escapeHtml(a.type)}</span>
-            <span class="action-arrow">→</span>
-            <span class="action-target">${escapeHtml(a.targetConnector)}</span>
+            <span>${escapeHtml(a.type)}</span>
           </div>
-          ${paramsBlock}
-          ${reasoning}
+          ${a.reasoning ? `<div class="reasoning-block">${escapeHtml(a.reasoning)}</div>` : ''}
+          ${a.error ? `<div style="color:var(--error);font-size:12px;margin-top:6px">${escapeHtml(a.error)}</div>` : ''}
           ${genDoc}
-          ${error}
         </div>
       `;
     }
-    
-    function render(events) {
-      if (!events.length) {
-        eventList.innerHTML = '<div class="empty">Henüz event yok. GitHub push veya mock event bekleniyor.</div>';
-        return;
-      }
-      eventList.innerHTML = events.map(ev => `
+    function renderEventDetail(ev) {
+      const actions = ev.actions || [];
+      return `
         <div class="event-card">
-          <div class="event-header">
-            <span class="event-source">${ev.source}</span>
-            <span class="event-type">${ev.type}</span>
-            <span class="event-time">${new Date(ev.timestamp).toLocaleString('tr-TR')}</span>
+          <div style="padding:12px 16px;background:rgba(99,102,241,0.08);border-bottom:1px solid var(--border);display:flex;gap:12px;flex-wrap:wrap">
+            <span style="color:var(--accent);font-weight:600">${escapeHtml(ev.source)}</span>
+            <span style="color:var(--muted)">${escapeHtml(ev.type)}</span>
+            <span style="color:var(--muted);margin-left:auto">${new Date(ev.timestamp).toLocaleString('tr-TR')}</span>
           </div>
-          ${renderPayload(ev.payload, ev.source, ev.type, ev.id)}
-          <div class="actions">
-            ${(ev.actions || []).length ? `<div class="actions-title">Agent çıktısı</div>` : ''}
-            ${(ev.actions || []).map(renderAction).join('')}
-          </div>
+          ${renderPayload(ev.payload, ev.source, ev.type)}
+          ${actions.length ? `<div class="actions-title">Tool çıktısı</div>${actions.map(renderAction).join('')}` : ''}
         </div>
-      `).join('');
+      `;
     }
-    
-    function eventsFingerprint(events) {
-      return events.map(e => 
-        e.id + ':' + (e.actions || []).map(a => a.id + ':' + a.success).join(',')
-      ).join('|');
+    function streamRowStatus(actions) {
+      if (!actions || !actions.length) return { cls: 'pending', icon: '…' };
+      const hasFail = actions.some(a => a.success === false);
+      const allDone = actions.every(a => a.success === true || a.success === false);
+      if (hasFail) return { cls: 'fail', icon: '✗' };
+      if (allDone) return { cls: 'ok', icon: '✓' };
+      return { cls: 'pending', icon: '…' };
     }
+    function render(events) {
+      const limited = events.slice(0, MAX_STREAM);
+      const m = computeMetrics(events);
+      document.getElementById('metricsBar').innerHTML = `
+        <div class="metric-card"><div class="metric-label">Bugün event</div><div class="metric-value accent">${m.eventsToday}</div></div>
+        <div class="metric-card"><div class="metric-label">Toplam aksiyon</div><div class="metric-value">${m.totalActions}</div></div>
+        <div class="metric-card"><div class="metric-label">Başarı oranı</div><div class="metric-value success">${m.successRate}%</div></div>
+        <div class="metric-card"><div class="metric-label">En çok kullanılan</div><div class="metric-value">${escapeHtml(m.topTool)} <span style="font-size:12px;color:var(--muted)">(${m.topToolCount})</span></div></div>
+      `;
+      if (!limited.length) {
+        document.getElementById('streamList').innerHTML = '<div class="empty-stream">Henüz event yok.</div>';
+      } else {
+        document.getElementById('streamList').innerHTML = limited.map(ev => {
+          const tools = (ev.actions || []).map(a => a.type).filter((v,i,a)=>a.indexOf(v)===i).join(', ') || '-';
+          const status = streamRowStatus(ev.actions);
+          const time = new Date(ev.timestamp);
+          const timeStr = time.toLocaleDateString('tr-TR') === new Date().toLocaleDateString('tr-TR')
+            ? time.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+            : time.toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' });
+          return `<div class="stream-row" data-id="${escapeHtml(ev.id)}">
+            <span class="time">${escapeHtml(timeStr)}</span>
+            <span class="source">${escapeHtml(ev.source)}</span>
+            <span class="type">${escapeHtml(ev.type)}</span>
+            <span class="tools">${escapeHtml(tools)}</span>
+            <span class="status ${status.cls}">${status.icon}</span>
+          </div>`;
+        }).join('');
+      }
+      const lastDoc = events.flatMap(e => (e.actions||[]).filter(a => a.type === 'generate_doc' && a.resultData?.content)).pop();
+      const panelDoc = document.getElementById('panelDoc');
+      if (lastDoc && lastDoc.resultData?.content) {
+        const rd = lastDoc.resultData;
+        panelDoc.innerHTML = `
+          <div style="font-size:10px;color:var(--muted);margin-bottom:6px">${escapeHtml(rd.filename || '')}</div>
+          <div class="doc-preview markdown-body" style="font-size:11px">${renderMarkdown(String(rd.content ?? '').slice(0, 1500))}${String(rd.content).length > 1500 ? '…' : ''}</div>
+        `;
+      } else panelDoc.innerHTML = '<div class="panel-empty">Henüz dokümantasyon üretilmedi.</div>';
+      const notifs = events.flatMap(e => (e.actions||[]).filter(a => a.type === 'notify_team')).slice(0, 5);
+      const panelNotif = document.getElementById('panelNotifications');
+      panelNotif.innerHTML = notifs.length ? notifs.map(n => {
+        const msg = (n.payload?.message || n.reasoning || '').slice(0, 80) + (n.payload?.message?.length > 80 ? '…' : '');
+        return `<div class="panel-item">${escapeHtml(msg)}<br><small>${formatRelTime(n.executedAt || n.id)}</small></div>`;
+      }).join('') : '<div class="panel-empty">Henüz bildirim yok.</div>';
+      const toolCounts = {};
+      events.forEach(e => (e.actions||[]).forEach(a => { toolCounts[a.type] = (toolCounts[a.type]||0)+1; }));
+      const panelTools = document.getElementById('panelTools');
+      const toolsList = Object.entries(toolCounts).sort((a,b)=>b[1]-a[1]);
+      panelTools.innerHTML = toolsList.length ? toolsList.map(([name,c]) => `<div class="panel-tool"><span>${escapeHtml(name)}</span><span>${c}</span></div>`).join('') : '<div class="panel-empty">Henüz tool kullanılmadı.</div>';
+      streamList.querySelectorAll('.stream-row').forEach(row => {
+        row.addEventListener('click', () => {
+          const id = row.dataset.id;
+          const ev = events.find(e => e.id === id);
+          if (!ev) return;
+          document.getElementById('drawerTitle').textContent = `${ev.source} · ${ev.type}`;
+          document.getElementById('drawerBody').innerHTML = renderEventDetail(ev);
+          document.getElementById('drawer').classList.add('open');
+          document.getElementById('drawerOverlay').classList.add('open');
+          document.getElementById('drawerBody').querySelectorAll('.doc-toggle').forEach(btn => {
+            btn.onclick = function() {
+              const block = this.closest('.generated-doc-block');
+              block.querySelectorAll('.doc-toggle').forEach(b => b.classList.remove('active'));
+              this.classList.add('active');
+              const preview = block.querySelector('.doc-preview');
+              const raw = block.querySelector('.doc-raw');
+              if (this.dataset.mode === 'preview') { preview.style.display = ''; raw.style.display = 'none'; }
+              else { preview.style.display = 'none'; raw.style.display = ''; }
+            };
+          });
+        });
+      });
+    }
+    const streamList = document.getElementById('streamList');
+    function eventsFingerprint(events) { return events.map(e => e.id + ':' + (e.actions||[]).map(a => a.id + ':' + a.success).join(',')).join('|'); }
     let lastFingerprint = '';
     async function fetchEvents() {
       try {
@@ -673,27 +382,15 @@
         lastFingerprint = fp;
         render(events);
       } catch (e) {
-        eventList.innerHTML = '<div class="empty">Bağlantı hatası.</div>';
+        document.getElementById('streamList').innerHTML = '<div class="empty-stream">Bağlantı hatası.</div>';
       }
     }
-    
+    document.getElementById('drawerOverlay').addEventListener('click', () => {
+      document.getElementById('drawer').classList.remove('open');
+      document.getElementById('drawerOverlay').classList.remove('open');
+    });
     fetchEvents();
     setInterval(fetchEvents, 2000);
-    eventList.addEventListener('click', (e) => {
-      const btn = e.target.closest('.doc-toggle');
-      if (!btn) return;
-      const block = btn.closest('.generated-doc-block');
-      if (!block) return;
-      block.querySelectorAll('.doc-toggle').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const mode = btn.dataset.mode;
-      const preview = block.querySelector('.doc-preview');
-      const raw = block.querySelector('.doc-raw');
-      if (preview && raw) {
-        if (mode === 'preview') { preview.style.display = ''; raw.style.display = 'none'; }
-        else { preview.style.display = 'none'; raw.style.display = ''; }
-      }
-    });
   </script>
 </body>
 </html>
