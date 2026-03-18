@@ -17,6 +17,8 @@ export interface IToolContext {
   config?: { slack_webhook_url?: string }
   /** Bu event için seçilen tool listesi (notify_team mesajında kullanılır) */
   selections?: Array<{ tool: string }>
+  /** Bu pipeline'da önce çalışan tool'ların sonuçları (generate_doc → notify_team geçişi için) */
+  priorResults?: Array<{ tool: string; result: FlowlessResult }>
 }
 
 export interface ITool {

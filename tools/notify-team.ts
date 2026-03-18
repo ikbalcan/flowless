@@ -17,6 +17,29 @@ function getWebhookUrl(ctx: IToolContext): string | undefined {
   return undefined
 }
 
+/** generate_doc bu pipeline'da önce çalıştıysa içeriğini döner */
+function getGenerateDocContent(ctx: IToolContext): string | undefined {
+  const prior = ctx.priorResults
+  if (!prior?.length) return undefined
+  const doc = prior.find((r) => r.tool === 'generate_doc')
+  if (!doc?.result?.success || !doc.result.data) return undefined
+  const data = doc.result.data as Record<string, unknown>
+  const content = data.content as string | undefined
+  return typeof content === 'string' && content.trim() ? content.trim() : undefined
+}
+
+/** Markdown'ı Slack mrkdwn formatına çevirir (## → *bold*, - → •) */
+function markdownToSlack(md: string): string {
+  return md
+    .replace(/^##\s+(.+)$/gm, '\n*$1*')
+    .replace(/^###\s+(.+)$/gm, '\n*$1*')
+    .replace(/\*\*(.+?)\*\*/g, '*$1*')
+    .replace(/^- /gm, '• ')
+    .replace(/^\d+\. /gm, '• ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 function buildSlackMessage(ctx: IToolContext): string {
   const p = ctx.event.payload as Record<string, unknown>
   const { message } = ctx.params as { message?: string }
@@ -51,20 +74,25 @@ function buildSlackMessage(ctx: IToolContext): string {
   }
   lines.push('')
 
-  // AI özet — en değerli bilgi, öne çıkar
-  if (message && typeof message === 'string' && message.trim()) {
-    lines.push(message.trim())
-    lines.push('')
+  // Ana içerik: generate_doc varsa onun zengin özetini kullan, yoksa AI message + commit
+  const docContent = getGenerateDocContent(ctx)
+  if (docContent) {
+    lines.push(markdownToSlack(docContent))
+  } else {
+    if (message && typeof message === 'string' && message.trim()) {
+      lines.push(message.trim())
+      lines.push('')
+    }
+    const rawCommitMsg = headCommit?.message ?? commits?.[0]?.message
+    if (rawCommitMsg) {
+      const firstLine = String(rawCommitMsg).split('\n')[0].trim()
+      const short = firstLine.length > 90 ? firstLine.slice(0, 87) + '...' : firstLine
+      lines.push(`_${short}_`)
+      lines.push('')
+    }
   }
 
-  // Son commit kısa özet (tek satır, max ~90 karakter)
-  const rawCommitMsg = headCommit?.message ?? commits?.[0]?.message
-  if (rawCommitMsg) {
-    const firstLine = String(rawCommitMsg).split('\n')[0].trim()
-    const short = firstLine.length > 90 ? firstLine.slice(0, 87) + '...' : firstLine
-    lines.push(`_${short}_`)
-    lines.push('')
-  }
+  lines.push('')
 
   // Link
   const after = (p.after as string) ?? headCommit?.id
