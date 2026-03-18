@@ -25,7 +25,7 @@
       line-height: 1.5;
     }
     .container {
-      max-width: 900px;
+      max-width: 1000px;
       margin: 0 auto;
       padding: 24px;
     }
@@ -73,15 +73,25 @@
     .event-type { color: var(--muted); }
     .event-time { margin-left: auto; color: var(--muted); font-size: 12px; }
     .event-payload {
-      padding: 12px 16px;
-      font-size: 12px;
-      color: var(--muted);
-      max-height: 80px;
-      overflow: auto;
+      padding: 14px 16px;
+      font-size: 13px;
+      color: var(--text);
+      max-height: 400px;
+      overflow-y: auto;
+      overflow-x: auto;
+      line-height: 1.6;
+      word-break: break-word;
     }
-    .event-payload pre { margin: 0; white-space: pre-wrap; }
+    .event-payload pre { margin: 0; white-space: pre-wrap; word-break: break-word; }
     .actions {
       border-top: 1px solid var(--border);
+    }
+    .actions-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      padding: 12px 20px 8px;
     }
     .action {
       padding: 12px 16px;
@@ -108,15 +118,256 @@
     .action-status.error { background: rgba(239, 68, 68, 0.2); color: var(--error); }
     .action-status.pending { background: rgba(113, 113, 122, 0.3); color: var(--muted); }
     .action-reasoning {
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 4px;
+      font-size: 13px;
+      color: var(--text);
+      margin-top: 8px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
     .empty {
       text-align: center;
       padding: 48px;
       color: var(--muted);
     }
+    /* UX Payload - GitHub style */
+    .payload-ux { padding: 16px 20px; }
+    .payload-ux .repo-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .payload-ux .repo-link {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 15px;
+    }
+    .payload-ux .repo-link:hover { text-decoration: underline; }
+    .payload-ux .branch-pill {
+      background: rgba(99, 102, 241, 0.2);
+      color: var(--accent);
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .payload-ux .meta-line {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+    .payload-ux .commits-section {
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+    }
+    .payload-ux .commits-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .payload-ux .commit-item {
+      display: flex;
+      gap: 12px;
+      padding: 10px 12px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      border-left: 3px solid var(--accent);
+    }
+    .payload-ux .commit-item:last-child { margin-bottom: 0; }
+    .payload-ux .commit-hash {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: ui-monospace, monospace;
+      min-width: 44px;
+      flex-shrink: 0;
+    }
+    .payload-ux .commit-hash a {
+      color: var(--muted);
+      text-decoration: none;
+    }
+    .payload-ux .commit-hash a:hover { color: var(--accent); }
+    .payload-ux .commit-body { flex: 1; min-width: 0; }
+    .payload-ux .commit-msg {
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.5;
+      margin-bottom: 4px;
+    }
+    .payload-ux .commit-meta {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .payload-ux .commit-detail {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed var(--border);
+    }
+    .payload-ux .detail-toggle {
+      font-size: 11px;
+      color: var(--accent);
+      cursor: pointer;
+      user-select: none;
+    }
+    .payload-ux .detail-toggle:hover { opacity: 0.9; }
+    .payload-ux .commit-full-msg {
+      font-size: 12px;
+      white-space: pre-wrap;
+      margin: 6px 0 0;
+      padding: 8px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 4px;
+    }
+    .payload-ux .tech-details {
+      margin-top: 12px;
+      padding: 10px 12px;
+      background: rgba(0,0,0,0.15);
+      border-radius: 6px;
+      font-size: 11px;
+      font-family: ui-monospace, monospace;
+      color: var(--muted);
+    }
+    /* Fallback payload - key-value */
+    .payload-fallback {
+      padding: 14px 16px;
+      font-size: 12px;
+      color: var(--text);
+    }
+    .raw-details { margin-top: 14px; }
+    .raw-details .raw-toggle {
+      font-size: 11px;
+      color: var(--muted);
+      cursor: pointer;
+      user-select: none;
+    }
+    .raw-details .raw-toggle:hover { color: var(--accent); }
+    .raw-details pre {
+      margin-top: 8px;
+      padding: 10px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 6px;
+      font-size: 11px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .payload-fallback pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    /* Action UX */
+    .action-ux {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(0,0,0,0.08);
+    }
+    .action-ux:last-child { border-bottom: none; }
+    .action-ux .action-top {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .action-ux .action-status {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .action-ux .action-type-pill {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .action-ux .action-arrow {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .action-ux .action-target {
+      background: rgba(99, 102, 241, 0.15);
+      color: var(--accent);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    .action-ux .reasoning-block {
+      background: rgba(99, 102, 241, 0.06);
+      border-left: 4px solid var(--accent);
+      padding: 12px 14px;
+      margin-top: 12px;
+      border-radius: 0 6px 6px 0;
+      font-size: 13px;
+      line-height: 1.65;
+      color: var(--text);
+      white-space: pre-wrap;
+    }
+    .action-ux .reasoning-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .action-ux .error-block {
+      background: rgba(239, 68, 68, 0.08);
+      border-left: 4px solid var(--error);
+      padding: 12px 14px;
+      margin-top: 12px;
+      border-radius: 0 6px 6px 0;
+      color: var(--error);
+    }
+    .action-ux .tool-params-details { margin-top: 8px; }
+    .action-ux .tool-params-details .detail-toggle {
+      font-size: 11px;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .action-ux .tool-params-details .detail-toggle:hover { color: var(--accent); }
+    .action-ux .tool-params-json {
+      margin-top: 6px;
+      padding: 8px 10px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 4px;
+      font-size: 11px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .action-ux .reasoning-details summary {
+      cursor: pointer;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 6px;
+      user-select: none;
+    }
+    .action-ux .reasoning-details summary:hover { color: var(--accent); }
+    .action-ux .reasoning-preview {
+      color: var(--text);
+      margin-top: 8px;
+    }
+    .action-ux .reasoning-expand {
+      color: var(--accent);
+      cursor: pointer;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    .action-ux .reasoning-expand:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -131,6 +382,11 @@
     const eventList = document.getElementById('eventList');
     const API = '/api/events';
     
+    function escapeHtml(s) {
+      if (s == null) return '';
+      const t = String(s);
+      return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
     function statusClass(a) {
       if (a.success === true) return 'success';
       if (a.success === false) return 'error';
@@ -140,6 +396,135 @@
       if (a.success === true) return '✓';
       if (a.success === false) return '✗';
       return '…';
+    }
+    function shortHash(id) {
+      if (!id || typeof id !== 'string') return '-';
+      return id.slice(0, 7);
+    }
+    function formatRelTime(ts) {
+      if (!ts) return '';
+      const d = new Date(ts);
+      const s = (Date.now() - d.getTime()) / 1000;
+      if (s < 60) return 'az önce';
+      if (s < 3600) return Math.floor(s/60) + ' dk önce';
+      if (s < 86400) return Math.floor(s/3600) + ' saat önce';
+      return d.toLocaleDateString('tr-TR');
+    }
+    function firstLine(msg) {
+      if (!msg) return '';
+      const t = String(msg);
+      const i = t.indexOf('\n');
+      return i > 0 ? t.slice(0, i) : t;
+    }
+    
+    function renderPayload(payload, source, type, eventId) {
+      const p = payload || {};
+      const raw = escapeHtml(JSON.stringify(payload, null, 2));
+      const rawBlock = `
+        <details class="raw-details">
+          <summary class="raw-toggle">Ham JSON göster</summary>
+          <pre>${raw}</pre>
+        </details>
+      `;
+      if (source === 'github' && (p.repository || p.commits)) {
+        const repo = p.repository || '';
+        const repoUrl = p.repositoryUrl || (repo ? 'https://github.com/' + repo : '');
+        const branch = p.branch || 'main';
+        const pusher = p.pusher || '?';
+        const count = p.commitCount ?? (p.commits?.length ?? 0);
+        const commits = p.commits || [];
+        const author = (c) => (typeof c.author === 'string' ? c.author : c.author?.name) || '?';
+        return `
+          <div class="payload-ux">
+            <div class="repo-row">
+              ${repoUrl ? `<a class="repo-link" href="${escapeHtml(repoUrl)}" target="_blank" rel="noopener">${escapeHtml(repo)}</a>` : `<span class="repo-link">${escapeHtml(repo)}</span>`}
+              <span class="branch-pill">${escapeHtml(branch)}</span>
+            </div>
+            <div class="meta-line">${count} commit · @${escapeHtml(pusher)} tarafından push edildi</div>
+            ${commits.length ? `
+              <div class="commits-section">
+                <div class="commits-title">Commitler</div>
+                ${commits.map(c => {
+                  const url = repoUrl ? repoUrl + '/commit/' + (c.id || '') : '#';
+                  const msg = c.message || '';
+                  const msgFirst = firstLine(msg);
+                  const hasDetail = msg.includes('\n') || msg.length > 60;
+                  const detailBlock = hasDetail ? `
+                    <details class="commit-detail">
+                      <summary class="detail-toggle">Detay</summary>
+                      <pre class="commit-full-msg">${escapeHtml(msg)}</pre>
+                    </details>
+                  ` : '';
+                  return `
+                    <div class="commit-item">
+                      <div class="commit-hash">${c.id ? `<a href="${url}" target="_blank" rel="noopener" title="${escapeHtml(c.id)}">${shortHash(c.id)}</a>` : '-'}</div>
+                      <div class="commit-body">
+                        <div class="commit-msg">${escapeHtml(msgFirst)}</div>
+                        <div class="commit-meta">${escapeHtml(author(c))} · ${formatRelTime(c.timestamp)}</div>
+                        ${detailBlock}
+                      </div>
+                    </div>`;
+                }).join('')}
+              </div>
+            ` : ''}
+            <details class="raw-details">
+              <summary class="raw-toggle">Teknik detay (before/after, flags)</summary>
+              <div class="tech-details">
+                before: ${escapeHtml(p.before || '-')}<br>
+                after: ${escapeHtml(p.after || '-')}<br>
+                created: ${!!p.created} · deleted: ${!!p.deleted} · forced: ${!!p.forced}
+              </div>
+            </details>
+            ${rawBlock}
+          </div>
+        `;
+      }
+      return `
+        <div class="payload-fallback">
+          <details class="raw-details">
+            <summary class="raw-toggle">Detay göster</summary>
+            <pre>${raw}</pre>
+          </details>
+        </div>
+      `;
+    }
+    
+    function renderAction(a) {
+      const statusCls = statusClass(a);
+      const icon = statusIcon(a);
+      const params = a.payload && typeof a.payload === 'object' && Object.keys(a.payload).length > 0;
+      const paramsBlock = params ? `
+        <details class="tool-params-details">
+          <summary class="detail-toggle">Parametreler</summary>
+          <pre class="tool-params-json">${escapeHtml(JSON.stringify(a.payload, null, 2))}</pre>
+        </details>
+      ` : '';
+      const reasoning = a.reasoning ? (() => {
+        const r = a.reasoning;
+        const openByDefault = r.length <= 200;
+        return `
+          <details class="reasoning-details" ${openByDefault ? 'open' : ''}>
+            <summary>Tool seçim gerekçesi ${!openByDefault ? '(tıkla detay)' : ''}</summary>
+            <div class="reasoning-block">${escapeHtml(r)}</div>
+          </details>
+        `;
+      })() : '';
+      const error = a.error ? `
+        <div class="error-block">${escapeHtml(a.error)}</div>
+      ` : '';
+      return `
+        <div class="action-ux">
+          <div class="action-top">
+            <span class="action-status ${statusCls}">${icon}</span>
+            <span class="action-type-pill" title="Tool">${escapeHtml(a.type)}</span>
+            <span class="action-arrow">→</span>
+            <span class="action-target">${escapeHtml(a.targetConnector)}</span>
+          </div>
+          ${paramsBlock}
+          ${reasoning}
+          ${error}
+        </div>
+      `;
     }
     
     function render(events) {
@@ -154,30 +539,28 @@
             <span class="event-type">${ev.type}</span>
             <span class="event-time">${new Date(ev.timestamp).toLocaleString('tr-TR')}</span>
           </div>
-          <div class="event-payload">
-            <pre>${JSON.stringify(ev.payload, null, 2).slice(0, 500)}${JSON.stringify(ev.payload).length > 500 ? '…' : ''}</pre>
-          </div>
+          ${renderPayload(ev.payload, ev.source, ev.type, ev.id)}
           <div class="actions">
-            ${(ev.actions || []).map(a => `
-              <div class="action">
-                <div class="action-header">
-                  <span class="action-status ${statusClass(a)}">${statusIcon(a)}</span>
-                  <span class="action-type">${a.type}</span>
-                  <span style="color:var(--muted)">→ ${a.targetConnector}</span>
-                </div>
-                ${a.reasoning ? `<div class="action-reasoning">${a.reasoning}</div>` : ''}
-                ${a.error ? `<div class="action-reasoning" style="color:var(--error)">${a.error}</div>` : ''}
-              </div>
-            `).join('')}
+            ${(ev.actions || []).length ? `<div class="actions-title">Agent çıktısı</div>` : ''}
+            ${(ev.actions || []).map(renderAction).join('')}
           </div>
         </div>
       `).join('');
     }
     
+    function eventsFingerprint(events) {
+      return events.map(e => 
+        e.id + ':' + (e.actions || []).map(a => a.id + ':' + a.success).join(',')
+      ).join('|');
+    }
+    let lastFingerprint = '';
     async function fetchEvents() {
       try {
         const r = await fetch(API);
         const { events } = await r.json();
+        const fp = eventsFingerprint(events);
+        if (fp === lastFingerprint) return;
+        lastFingerprint = fp;
         render(events);
       } catch (e) {
         eventList.innerHTML = '<div class="empty">Bağlantı hatası.</div>';

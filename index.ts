@@ -2,7 +2,7 @@
 /**
  * Flowless — Ana giriş noktası
  * Input: GitHub webhook (GITHUB_WEBHOOK_SECRET set) veya Mock
- * Output: Mock connector
+ * Output: Tool-based (log_event, generate_doc, vb.)
  * Dashboard: http://localhost:4000
  */
 
@@ -14,6 +14,7 @@ import { GitHubWebhookInputConnector } from './inputs/github-webhook.js'
 import { MockOutputConnector } from './connectors/mock.js'
 import { dashboardStore } from './dashboard/store.js'
 import { startDashboardServer } from './dashboard/server.js'
+import { loadConfig } from './config/loader.js'
 
 function main() {
   if (!process.env.OPENAI_API_KEY) {
@@ -21,9 +22,11 @@ function main() {
     process.exit(1)
   }
 
+  const config = loadConfig()
   const llm = new OpenAIProvider()
   const agent = new Agent({
     llm,
+    config,
     contextWindow: 10,
     activeConnectors: ['mock'],
   })

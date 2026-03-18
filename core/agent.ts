@@ -1,129 +1,169 @@
 /**
- * Agent — AI Reasoning + Action Planning
- * FlowlessEvent alır, LLM'e sorar, FlowlessAction üretir.
+ * Agent — AI Reasoning + Tool Selection
+ * Function calling yerine tek completion + JSON parse. Maliyet düşük.
  */
 
 import type { FlowlessEvent, FlowlessAction } from './interfaces.js'
 import type { ILLMProvider } from './llm/types.js'
 import { createContext, contextToPromptInput } from './context.js'
+import { getTool, getAllTools } from '../tools/index.js'
+import type { FlowlessConfig } from '../config/loader.js'
+import { getToolsForBranch } from '../config/loader.js'
 
-const SYSTEM_PROMPT = `Sen Flowless ajanısın. Geliştirme süreçlerini izleyen bir asistansın.
+function buildSystemPrompt(
+  toolNames: string[],
+  toolDescriptions: Map<string, string>
+): string {
+  const toolList = toolNames
+    .map((name) => `- ${name}: ${toolDescriptions.get(name) ?? ''}`)
+    .join('\n')
 
-Görevin: Gelen event'i yorumla ve yapılması gereken aksiyonları planla.
+  return `Sen Flowless ajanısın. Geliştirme süreçlerini izleyen bir asistansın.
 
-ÖNEMLİ — Event tipleri:
-- GitHub: source "github", type "commit_pushed" — gerçek commit eventleri. payload'da repository, branch, commits, headCommit (message, author) bilgisi vardır. Bunları kullan.
-- Mock: source "mock", "mock_event_X" — test eventleri. Gerçek SDLC gibi yorumla.
-- Her event mutlaka bir süreç adımını temsil eder — yorumla ve aksiyon üret
+Görevin: Gelen event'i yorumla ve uygun tool'u/tool'ları seç.
 
-Kurallar:
-- HER EVENT İÇİN MUTLAKA EN AZ 1 AKSİYON ÜRET. Boş liste asla dönme.
-- Sadece "activeConnectors" listesindeki connector'lara aksiyon ata (genelde "mock")
-- "type" alanı "log_event" olabilir — bu kabul edilebilir
-- "reasoning" alanı ZORUNLU ve DETAYLI olmalı: Event'i nasıl yorumladığını, neden bu aksiyona karar verdiğini, süreç bağlamında ne anlama geldiğini açıkla (2-3 cümle)
-- Event'i gerçek bir geliştirme süreci olayı gibi hayal et ve buna uygun reasoning yaz
+## Mevcut Tool Listesi (sadece bunlardan seç):
+${toolList}
 
-Cevaplarını MUTLAKA şu JSON formatında ver (başka metin ekleme):
+## Kurallar
+- Event'e göre uygun tool'u seç. Birden fazla seçebilirsin (örn: main branch commit için hem generate_doc hem notify_team).
+- "tools" alanına array ver. Her eleman: { "tool": "tool_adı", "params": {}, "reasoning": "neden bu tool, neden bu paramlar" }
+- Tek tool için: { "tools": [{ "tool": "log_event", "params": {}, "reasoning": "..." }] }
+- reasoning ZORUNLU ve DETAYLI olmalı.
+- params tool'a göre değişir. Boş {} olabilir.
+
+## Cevap formatı (SADECE JSON, başka metin yok):
 {
-  "actions": [
+  "tools": [
     {
-      "type": "log_event",
-      "targetConnector": "mock",
-      "payload": { "eventId": "...", "interpretation": "..." },
-      "reasoning": "Bu event'i [commit/PR/ticket/deployment] olarak yorumluyorum çünkü... Süreç açısından şu adım gerekiyor..."
+      "tool": "tool_adı",
+      "params": {},
+      "reasoning": "Bu event'i X olarak yorumluyorum çünkü... Bu tool'u seçtim çünkü..."
     }
   ]
 }`
+}
 
 export interface AgentConfig {
-  /** LLM provider */
   llm: ILLMProvider
-  /** Kaç önceki aksiyon hafızada tutulsun */
+  config: FlowlessConfig
   contextWindow?: number
-  /** Aktif output connector isimleri */
   activeConnectors: string[]
-  /** Geçmiş aksiyonlar (harici olarak yönetilebilir) */
-  recentActions?: FlowlessAction[]
 }
 
 export class Agent {
-  private config: AgentConfig
-  private _recentActions: FlowlessAction[] = []
+  private agentConfig: AgentConfig
 
-  constructor(config: AgentConfig) {
-    this.config = {
-      ...config,
-      recentActions: config.recentActions ?? [],
-    }
-    this._recentActions = [...(config.recentActions ?? [])]
+  constructor(agentConfig: AgentConfig) {
+    this.agentConfig = agentConfig
   }
 
-  /**
-   * Event alır, AI ile yorumlar, FlowlessAction listesi üretir.
-   */
   async processEvent(event: FlowlessEvent): Promise<FlowlessAction[]> {
+    const branch = this.getBranchFromEvent(event)
+    const allowedTools = getToolsForBranch(this.agentConfig.config, branch)
+
+    const allTools = getAllTools()
+    const toolDescriptions = new Map(
+      allTools.map((t) => [t.name, t.description] as const)
+    )
+    const systemPrompt = buildSystemPrompt(allowedTools, toolDescriptions)
+
     const context = createContext(
       event,
-      this._recentActions,
-      this.config.activeConnectors,
-      this.config.contextWindow ?? 10
+      [],
+      this.agentConfig.activeConnectors,
+      this.agentConfig.contextWindow ?? 10
     )
-
     const userInput = contextToPromptInput(context)
 
     const messages = [
-      { role: 'system' as const, content: SYSTEM_PROMPT },
-      { role: 'user' as const, content: userInput },
+      { role: 'system' as const, content: systemPrompt },
+      {
+        role: 'user' as const,
+        content:
+          userInput +
+          '\n\nBu event için hangi tool/tool\'ları kullanmalısın? Sadece JSON döndür.',
+      },
     ]
 
-    const rawResponse = await this.config.llm.complete(messages, {
+    const rawResponse = await this.agentConfig.llm.complete(messages, {
       maxTokens: 2048,
       temperature: 0.3,
       jsonMode: true,
     })
 
-    const actions = this.parseResponse(rawResponse, event.id)
+    const selections = this.parseToolSelection(rawResponse)
+    const actions: FlowlessAction[] = []
 
-    // Hafızaya ekle
-    for (const a of actions) {
-      this._recentActions.push(a)
-    }
-    // Pencereyi aşanları sil
-    const window = this.config.contextWindow ?? 10
-    if (this._recentActions.length > window) {
-      this._recentActions = this._recentActions.slice(-window)
+    for (let i = 0; i < selections.length; i++) {
+      const sel = selections[i]
+      const tool = getTool(sel.tool)
+
+      if (!tool) {
+        console.warn(`[Agent] Bilinmeyen tool: ${sel.tool}, atlanıyor`)
+        continue
+      }
+
+      const action: FlowlessAction = {
+        id: `act_${Date.now()}_${event.id.slice(-6)}_${i}`,
+        type: sel.tool,
+        targetConnector: 'mock',
+        payload: sel.params,
+        reasoning: sel.reasoning,
+      }
+      actions.push(action)
+
+      try {
+        await tool.execute({
+          event,
+          params: sel.params,
+        })
+      } catch (err) {
+        console.error(`[Agent] Tool execute hatası: ${sel.tool}`, err)
+      }
     }
 
     return actions
   }
 
-  private parseResponse(raw: string, eventId: string): FlowlessAction[] {
-    try {
-      const parsed = JSON.parse(raw) as { actions?: unknown[] }
-      const actions = parsed?.actions ?? []
-
-      if (!Array.isArray(actions) || actions.length === 0) {
-        return []
-      }
-
-      return actions.map((a, i) => this.toFlowlessAction(a, eventId, i))
-    } catch {
-      return []
+  private getBranchFromEvent(event: FlowlessEvent): string | undefined {
+    if (event.source === 'github' && event.metadata) {
+      return (event.metadata as Record<string, unknown>).branch as string
     }
+    const payload = event.payload as Record<string, unknown>
+    return payload?.branch as string | undefined
   }
 
-  private toFlowlessAction(
-    raw: unknown,
-    eventId: string,
-    index: number
-  ): FlowlessAction {
-    const obj = raw as Record<string, unknown>
-    return {
-      id: `act_${Date.now()}_${eventId.slice(-6)}_${index}`,
-      type: String(obj.type ?? 'unknown'),
-      targetConnector: String(obj.targetConnector ?? 'mock'),
-      payload: obj.payload ?? {},
-      reasoning: obj.reasoning != null ? String(obj.reasoning) : undefined,
+  private parseToolSelection(raw: string): Array<{ tool: string; params: Record<string, unknown>; reasoning: string }> {
+    try {
+      const parsed = JSON.parse(raw) as {
+        tool?: string
+        params?: Record<string, unknown>
+        reasoning?: string
+        tools?: Array<{ tool: string; params?: Record<string, unknown>; reasoning?: string }>
+      }
+
+      if (parsed.tools && Array.isArray(parsed.tools)) {
+        return parsed.tools.map((t) => ({
+          tool: String(t.tool ?? 'log_event'),
+          params: (t.params as Record<string, unknown>) ?? {},
+          reasoning: String(t.reasoning ?? ''),
+        }))
+      }
+
+      if (parsed.tool) {
+        return [
+          {
+            tool: String(parsed.tool),
+            params: (parsed.params as Record<string, unknown>) ?? {},
+            reasoning: String(parsed.reasoning ?? ''),
+          },
+        ]
+      }
+
+      return []
+    } catch {
+      return []
     }
   }
 }

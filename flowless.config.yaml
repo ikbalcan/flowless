@@ -1,0 +1,26 @@
+# Flowless Proje Konfigürasyonu
+
+project:
+  name: flowless
+
+# Aktif tool listesi — LLM'e sunulacak
+tools:
+  active:
+    - log_event
+    - update_ticket
+    - create_comment
+    - generate_doc
+    - notify_team
+
+# Branch kuralları — hangi branch'te hangi tool'lar çalışsın
+branchRules:
+  main:
+    - generate_doc
+    - notify_team
+  develop:
+    - log_event
+    - create_comment
+
+# Varsayılan (branch eşleşmezse)
+default:
+  - log_event
