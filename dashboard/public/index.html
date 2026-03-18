@@ -539,12 +539,12 @@
         <div class="error-block">${escapeHtml(a.error)}</div>
       ` : '';
       const rd = a.resultData;
-      const genDoc = a.type === 'generate_doc' && rd && typeof rd === 'object' && 'content' in rd
+      const genDoc = a.type === 'generate_doc' && rd && typeof rd === 'object'
         ? `
           <div class="generated-doc-block">
-            <div class="generated-doc-title">Üretilen dokümantasyon ${rd.filename ? '· ' + escapeHtml(rd.filename) : ''}</div>
-            ${rd.path ? `<div class="generated-doc-path">${escapeHtml(rd.path)}</div>` : ''}
-            <div class="generated-doc-content">${escapeHtml(String(rd.content ?? ''))}</div>
+            <div class="generated-doc-title">Üretilen dokümantasyon ${rd.filename ? '· ' + escapeHtml(String(rd.filename)) : ''}</div>
+            ${rd.path ? `<div class="generated-doc-path">📄 ${escapeHtml(String(rd.path))}</div>` : ''}
+            <div class="generated-doc-content">${rd.content ? escapeHtml(String(rd.content)) : '(içerik yok)'}</div>
           </div>
         ` : '';
       return `
