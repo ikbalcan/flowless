@@ -36,6 +36,7 @@ ${toolList}
 - Tek tool için: { "tools": [{ "tool": "log_event", "params": {}, "reasoning": "..." }] }
 - reasoning ZORUNLU ve DETAYLI olmalı.
 - params tool'a göre değişir. Boş {} olabilir.
+- notify_team seçildiğinde params.message ZORUNLU: Takımı bilgilendiren 1-2 cümle Türkçe özet yaz. Ne değişti, neden önemli, aksiyon gerekirse belirt. Teknik jargondan kaçın, anlaşılır olsun.
 
 ## Cevap formatı (SADECE JSON, başka metin yok):
 {

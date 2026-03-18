@@ -25,38 +25,54 @@ function buildSlackMessage(ctx: IToolContext): string {
   const repo = (p.repository as string) ?? ''
   const branch = (p.branch as string) ?? (p.headBranch as string) ?? ''
   const repoUrl = p.repositoryUrl as string | undefined
-
-  if (repo || branch) {
-    lines.push(`*${repo}${repo && branch ? ' · ' : ''}${branch}*`)
-  }
-
+  const pusher = p.pusher as string | undefined
+  const commitCount = (p.commitCount as number) ?? 0
   const headCommit = p.headCommit as Record<string, unknown> | undefined
   const commits = p.commits as Array<Record<string, unknown>> | undefined
-  const commitMsg = headCommit?.message ?? commits?.[0]?.message
-  if (commitMsg) {
+
+  // Başlık: Net, insan odaklı
+  const branchLabel = branch === 'main' ? 'main' : branch
+  lines.push(`🚀 *${repo}* · \`${branchLabel}\` güncellendi`)
+  lines.push('')
+
+  // Kim ne yaptı + dosya istatistikleri
+  const who = pusher ? `*${pusher}* tarafından ` : ''
+  const count = commitCount > 0 ? commitCount : (commits?.length ?? 1)
+  const countText = count === 1 ? '1 commit' : `${count} commit`
+  lines.push(`${who}${countText} push edildi.`)
+
+  // Etkilenen dosya sayısı (headCommit'ten)
+  const added = (headCommit?.added as string[]) ?? []
+  const removed = (headCommit?.removed as string[]) ?? []
+  const modified = (headCommit?.modified as string[]) ?? []
+  const uniqueFiles = new Set([...added, ...removed, ...modified]).size
+  if (uniqueFiles > 0) {
+    lines.push(`${uniqueFiles} dosya etkilendi.`)
+  }
+  lines.push('')
+
+  // AI özet — en değerli bilgi, öne çıkar
+  if (message && typeof message === 'string' && message.trim()) {
+    lines.push(message.trim())
     lines.push('')
-    lines.push(String(commitMsg).split('\n')[0])
   }
 
-  const selections = ctx.selections ?? []
-  if (selections.length > 0) {
-    const toolNames = selections.map((s) => s.tool).join(', ')
+  // Son commit kısa özet (tek satır, max ~90 karakter)
+  const rawCommitMsg = headCommit?.message ?? commits?.[0]?.message
+  if (rawCommitMsg) {
+    const firstLine = String(rawCommitMsg).split('\n')[0].trim()
+    const short = firstLine.length > 90 ? firstLine.slice(0, 87) + '...' : firstLine
+    lines.push(`_${short}_`)
     lines.push('')
-    lines.push(`Aksiyonlar: ${toolNames}`)
   }
 
-  if (message && typeof message === 'string') {
-    lines.push('')
-    lines.push(message)
-  }
-
+  // Link
   const after = (p.after as string) ?? headCommit?.id
   const commitUrl = repoUrl && after
     ? `${String(repoUrl).replace(/\/$/, '')}/commit/${after}`
-    : p.url ?? headCommit?.url
+    : (p.url as string) ?? (headCommit?.url as string)
   if (commitUrl) {
-    lines.push('')
-    lines.push(String(commitUrl))
+    lines.push(`<${commitUrl}|Detaylar için tıkla →>`)
   }
 
   return lines.join('\n').trim() || 'Flowless bildirimi'
