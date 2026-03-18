@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Flowless Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.1/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.9/dist/purify.min.js"></script>
   <style>
     * { box-sizing: border-box; }
     :root {
@@ -332,31 +334,63 @@
       color: var(--error);
     }
     .action-ux .generated-doc-block {
-      margin-top: 12px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
+      margin-top: 14px;
+      border: 2px solid var(--success);
+      border-radius: 8px;
       overflow: hidden;
-      background: rgba(0,0,0,0.2);
+      background: rgba(34, 197, 94, 0.08);
     }
     .action-ux .generated-doc-title {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--muted);
-      padding: 8px 12px;
-      background: rgba(99, 102, 241, 0.08);
-      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--success);
+      padding: 10px 14px;
+      background: rgba(34, 197, 94, 0.12);
+      border-bottom: 1px solid rgba(34, 197, 94, 0.3);
     }
-    .action-ux .generated-doc-path { font-size: 11px; color: var(--accent); }
+    .action-ux .generated-doc-path {
+      font-size: 11px;
+      color: var(--accent);
+      padding: 6px 14px;
+      background: rgba(0,0,0,0.15);
+    }
     .action-ux .generated-doc-content {
-      padding: 12px;
+      padding: 12px 14px;
       font-size: 12px;
       line-height: 1.6;
-      white-space: pre-wrap;
       word-break: break-word;
-      max-height: 300px;
+      max-height: 400px;
       overflow-y: auto;
     }
+    .action-ux .generated-doc-content.doc-raw {
+      white-space: pre-wrap;
+      font-family: ui-monospace, monospace;
+    }
+    .action-ux .doc-view-toggles {
+      display: flex;
+      gap: 4px;
+      padding: 6px 14px;
+      background: rgba(0,0,0,0.2);
+      border-bottom: 1px solid var(--border);
+    }
+    .action-ux .doc-toggle {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .action-ux .doc-toggle:hover { color: var(--text); border-color: var(--muted); }
+    .action-ux .doc-toggle.active { background: var(--accent); color: white; border-color: var(--accent); }
+    .action-ux .doc-preview.markdown-body h2 { font-size: 14px; margin: 16px 0 8px; color: var(--text); }
+    .action-ux .doc-preview.markdown-body h2:first-child { margin-top: 0; }
+    .action-ux .doc-preview.markdown-body p { margin: 0 0 10px; }
+    .action-ux .doc-preview.markdown-body ul { margin: 0 0 10px; padding-left: 20px; }
+    .action-ux .doc-preview.markdown-body li { margin: 4px 0; }
+    .action-ux .doc-preview.markdown-body code { background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; font-size: 11px; }
     .action-ux .tool-params-details { margin-top: 8px; }
     .action-ux .tool-params-details .detail-toggle {
       font-size: 11px;
@@ -394,7 +428,32 @@
       margin-top: 4px;
     }
     .action-ux .reasoning-expand:hover { text-decoration: underline; }
+    /* Markdown preview */
+    .doc-view-toggles { display: flex; gap: 0; padding: 6px 12px; background: rgba(0,0,0,0.2); border-bottom: 1px solid var(--border); }
+    .doc-toggle {
+      padding: 4px 12px;
+      font-size: 11px;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      border-radius: 4px;
+    }
+    .doc-toggle:hover { color: var(--text); }
+    .doc-toggle.active { color: var(--accent); font-weight: 600; background: rgba(99, 102, 241, 0.15); }
+    .doc-preview.markdown-body h1, .doc-preview.markdown-body h2, .doc-preview.markdown-body h3 {
+      margin-top: 1em; margin-bottom: 0.5em; font-weight: 600; color: var(--text);
+    }
+    .doc-preview.markdown-body h2 { font-size: 1.1em; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+    .doc-preview.markdown-body ul { margin: 0.5em 0; padding-left: 1.5em; }
+    .doc-preview.markdown-body li { margin: 0.25em 0; }
+    .doc-preview.markdown-body p { margin: 0.5em 0; }
+    .doc-preview.markdown-body code { background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    .doc-preview.markdown-body pre { background: rgba(0,0,0,0.3); padding: 12px; border-radius: 6px; overflow-x: auto; }
+    .doc-preview.markdown-body pre code { background: none; padding: 0; }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 </head>
 <body>
   <div class="container">
@@ -442,7 +501,16 @@
       const i = t.indexOf('\n');
       return i > 0 ? t.slice(0, i) : t;
     }
-    
+    function renderMarkdown(md) {
+      if (!md) return '';
+      try {
+        if (typeof marked !== 'undefined') {
+          const html = typeof marked.parse === 'function' ? marked.parse(md, { gfm: true }) : marked(md);
+          return typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(html) : html;
+        }
+      } catch (e) { return escapeHtml(md); }
+      return escapeHtml(md);
+    }
     function renderPayload(payload, source, type, eventId) {
       const p = payload || {};
       const raw = escapeHtml(JSON.stringify(payload, null, 2));
@@ -539,12 +607,18 @@
         <div class="error-block">${escapeHtml(a.error)}</div>
       ` : '';
       const rd = a.resultData;
+      const rawContent = rd && typeof rd === 'object' ? String(rd.content ?? '') : '';
       const genDoc = a.type === 'generate_doc' && rd && typeof rd === 'object'
         ? `
           <div class="generated-doc-block">
             <div class="generated-doc-title">Üretilen dokümantasyon ${rd.filename ? '· ' + escapeHtml(String(rd.filename)) : ''}</div>
             ${rd.path ? `<div class="generated-doc-path">📄 ${escapeHtml(String(rd.path))}</div>` : ''}
-            <div class="generated-doc-content">${rd.content ? escapeHtml(String(rd.content)) : '(içerik yok)'}</div>
+            <div class="doc-view-toggles">
+              <button type="button" class="doc-toggle active" data-mode="preview">Preview</button>
+              <button type="button" class="doc-toggle" data-mode="raw">&lt;/&gt;</button>
+            </div>
+            <div class="generated-doc-content doc-preview markdown-body">${rawContent ? renderMarkdown(rawContent) : '(içerik yok)'}</div>
+            <div class="generated-doc-content doc-raw" style="display:none">${rawContent ? escapeHtml(rawContent) : '(içerik yok)'}</div>
           </div>
         ` : '';
       return `
@@ -605,6 +679,21 @@
     
     fetchEvents();
     setInterval(fetchEvents, 2000);
+    eventList.addEventListener('click', (e) => {
+      const btn = e.target.closest('.doc-toggle');
+      if (!btn) return;
+      const block = btn.closest('.generated-doc-block');
+      if (!block) return;
+      block.querySelectorAll('.doc-toggle').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const mode = btn.dataset.mode;
+      const preview = block.querySelector('.doc-preview');
+      const raw = block.querySelector('.doc-raw');
+      if (preview && raw) {
+        if (mode === 'preview') { preview.style.display = ''; raw.style.display = 'none'; }
+        else { preview.style.display = 'none'; raw.style.display = ''; }
+      }
+    });
   </script>
 </body>
 </html>
