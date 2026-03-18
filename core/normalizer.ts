@@ -145,6 +145,50 @@ export function normalizeGitHubPush(
   }
 }
 
+/**
+ * GitHub create webhook payload'ını FlowlessEvent'e dönüştürür.
+ * Branch veya tag oluşturulduğunda tetiklenir.
+ */
+export interface GitHubCreatePayload {
+  ref?: string
+  ref_type?: 'branch' | 'tag'
+  master_branch?: string
+  repository?: {
+    id?: number
+    name?: string
+    full_name?: string
+    html_url?: string
+  }
+  sender?: { login?: string }
+}
+
+export function normalizeGitHubCreate(
+  payload: GitHubCreatePayload,
+  deliveryId: string
+): FlowlessEvent {
+  const refType = payload.ref_type ?? 'branch'
+  const ref = payload.ref ?? 'unknown'
+  return {
+    id: `evt_gh_${deliveryId}`,
+    source: 'github',
+    type: refType === 'tag' ? 'tag_created' : 'branch_created',
+    payload: {
+      ref,
+      refType,
+      repository: payload.repository?.full_name ?? payload.repository?.name,
+      repositoryUrl: payload.repository?.html_url,
+      creator: payload.sender?.login,
+      masterBranch: payload.master_branch,
+    },
+    timestamp: new Date(),
+    metadata: {
+      deliveryId,
+      repository: payload.repository?.full_name,
+      branch: refType === 'branch' ? ref : undefined,
+    },
+  }
+}
+
 function generateId(): string {
   return `evt_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
 }

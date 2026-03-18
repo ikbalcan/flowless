@@ -8,7 +8,12 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import type { IInputConnector } from '../core/interfaces.js'
 import type { FlowlessEvent } from '../core/interfaces.js'
-import { normalizeGitHubPush, type GitHubPushPayload } from '../core/normalizer.js'
+import {
+  normalizeGitHubPush,
+  normalizeGitHubCreate,
+  type GitHubPushPayload,
+  type GitHubCreatePayload,
+} from '../core/normalizer.js'
 
 export interface GitHubWebhookConfig {
   /** Webhook secret (GITHUB_WEBHOOK_SECRET) */
@@ -87,7 +92,8 @@ export class GitHubWebhookInputConnector implements IInputConnector {
       return
     }
 
-    if (eventType !== 'push') {
+    const supportedEvents = ['push', 'create']
+    if (!supportedEvents.includes(eventType)) {
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ received: true, skipped: `Event type: ${eventType}` }))
       return
@@ -95,8 +101,19 @@ export class GitHubWebhookInputConnector implements IInputConnector {
 
     try {
       const payloadJson = this.extractPayload(body, req.headers['content-type'])
-      const payload = JSON.parse(payloadJson) as GitHubPushPayload
-      const event = normalizeGitHubPush(payload, deliveryId ?? `delivery_${Date.now()}`)
+      const payload = JSON.parse(payloadJson)
+      const delivery = deliveryId ?? `delivery_${Date.now()}`
+
+      let event: FlowlessEvent
+      if (eventType === 'push') {
+        event = normalizeGitHubPush(payload as GitHubPushPayload, delivery)
+      } else if (eventType === 'create') {
+        event = normalizeGitHubCreate(payload as GitHubCreatePayload, delivery)
+      } else {
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ received: true, skipped: `Event type: ${eventType}` }))
+        return
+      }
 
       this.onEventCallback?.(event)
 
