@@ -189,6 +189,93 @@ export function normalizeGitHubCreate(
   }
 }
 
+/**
+ * GitHub pull_request webhook payload'ını FlowlessEvent'e dönüştürür.
+ */
+export interface GitHubPullRequestPayload {
+  action?: string
+  pull_request?: {
+    number?: number
+    title?: string
+    body?: string
+    state?: string
+    html_url?: string
+    head?: { ref?: string; sha?: string }
+    base?: { ref?: string; sha?: string }
+    user?: { login?: string }
+  }
+  repository?: {
+    full_name?: string
+    name?: string
+    html_url?: string
+  }
+  sender?: { login?: string }
+}
+
+export function normalizeGitHubPullRequest(
+  payload: GitHubPullRequestPayload,
+  deliveryId: string
+): FlowlessEvent {
+  const pr = payload.pull_request
+  const action = payload.action ?? 'unknown'
+  const typeMap: Record<string, string> = {
+    opened: 'pr_opened',
+    closed: 'pr_closed',
+    reopened: 'pr_reopened',
+    synchronize: 'pr_updated',
+  }
+  const flowlessType = typeMap[action] ?? `pr_${action}`
+
+  return {
+    id: `evt_gh_${deliveryId}`,
+    source: 'github',
+    type: flowlessType,
+    payload: {
+      action,
+      number: pr?.number,
+      title: pr?.title,
+      body: pr?.body,
+      state: pr?.state,
+      url: pr?.html_url,
+      headBranch: pr?.head?.ref,
+      baseBranch: pr?.base?.ref,
+      author: pr?.user?.login ?? payload.sender?.login,
+      repository: payload.repository?.full_name ?? payload.repository?.name,
+      repositoryUrl: payload.repository?.html_url,
+    },
+    timestamp: new Date(),
+    metadata: {
+      deliveryId,
+      repository: payload.repository?.full_name,
+      branch: pr?.head?.ref,
+    },
+  }
+}
+
+/**
+ * Diğer tüm GitHub event'leri için generic normalizer.
+ * payload'ı olduğu gibi taşır, type: github_{eventType} olur.
+ */
+export function normalizeGitHubGeneric(
+  payload: Record<string, unknown>,
+  deliveryId: string,
+  eventType: string
+): FlowlessEvent {
+  const repo = payload.repository as Record<string, unknown> | undefined
+  const sender = payload.sender as Record<string, unknown> | undefined
+  return {
+    id: `evt_gh_${deliveryId}`,
+    source: 'github',
+    type: `github_${eventType}`,
+    payload,
+    timestamp: new Date(),
+    metadata: {
+      deliveryId,
+      repository: repo?.full_name ?? repo?.name,
+    },
+  }
+}
+
 function generateId(): string {
   return `evt_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
 }
