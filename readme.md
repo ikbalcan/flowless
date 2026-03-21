@@ -101,6 +101,8 @@ github_projects:
 
 Örnek: `git commit -m "#1 add new feature"` → Flowless issue #1'i "In Progress" yapar, doc üretir, Slack'e haber verir.
 
+`github_projects` + ilgili `transitions` tanımlıysa ve branch kurallarında `update_github_project` varsa, agent **GitHub statü tool'unu LLM seçmese bile otomatik ekler** (mesajda `#issue` yoksa tool yine no-op).
+
 ## Proje Yapısı
 
 ```

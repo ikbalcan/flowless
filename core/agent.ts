@@ -15,6 +15,40 @@ import { getTool, getAllTools } from '../tools/index.js'
 import type { FlowlessConfig } from '../config/loader.js'
 import { getToolsForBranch, getProjectRoot } from '../config/loader.js'
 
+/**
+ * github_projects yapılandırıldıysa GitHub statü güncellemesi LLM'e bırakılmaz;
+ * bu event tiplerinde update_github_project her zaman çalıştırılır (tool içinde # yoksa no-op).
+ */
+function shouldInjectUpdateGithubProject(
+  config: FlowlessConfig,
+  event: FlowlessEvent
+): boolean {
+  const gp = config.github_projects
+  if (!gp?.transitions || Object.keys(gp.transitions).length === 0) return false
+  if (event.source !== 'github') return false
+  const t = event.type
+  if (t === 'commit_pushed') return 'commit_pushed' in gp.transitions || 'commit_pushed_completed' in gp.transitions
+  if (t === 'pr_opened' || t === 'pr_merged') return t in gp.transitions
+  return Boolean(gp.transitions[t])
+}
+
+function mergeUpdateGithubProjectSelection(
+  selections: Array<{ tool: string; params: Record<string, unknown>; reasoning: string }>
+): Array<{ tool: string; params: Record<string, unknown>; reasoning: string }> {
+  if (selections.some((s) => s.tool === 'update_github_project')) {
+    return selections
+  }
+  return [
+    {
+      tool: 'update_github_project',
+      params: {},
+      reasoning:
+        'flowless: github_projects aktif; GitHub Projects statü güncellemesi bu pipeline’da zorunlu çalıştırıldı (mesajda #issue yoksa tool no-op).',
+    },
+    ...selections,
+  ]
+}
+
 function buildSystemPrompt(
   toolNames: string[],
   toolDescriptions: Map<string, string>
@@ -32,6 +66,7 @@ ${toolList}
 
 ## Kurallar
 - Event'e göre uygun tool'u seç. Birden fazla seçebilirsin (örn: main branch commit için hem generate_doc hem notify_team).
+- GitHub commit/PR event'lerinde ve izin verilen tool listesinde \`update_github_project\` varsa, commit veya PR ile ilgili statü senkronu için onu da seç (sistem gerekirse otomatik ekler; yine de seçebilirsin).
 - "tools" alanına array ver. Her eleman: { "tool": "tool_adı", "params": {}, "reasoning": "neden bu tool, neden bu paramlar" }
 - Tek tool için: { "tools": [{ "tool": "log_event", "params": {}, "reasoning": "..." }] }
 - reasoning ZORUNLU ve DETAYLI olmalı.
@@ -99,6 +134,14 @@ export class Agent {
     })
 
     let selections = this.parseToolSelection(rawResponse)
+
+    if (
+      allowedTools.includes('update_github_project') &&
+      shouldInjectUpdateGithubProject(this.agentConfig.config, event)
+    ) {
+      selections = mergeUpdateGithubProjectSelection(selections)
+    }
+
     // Sıra: update_github_project (önce statü) → generate_doc → notify_team → ...
     const order = { update_github_project: 0, generate_doc: 1, notify_team: 2, log_event: 3, update_ticket: 4, create_comment: 5 }
     selections = [...selections].sort(
