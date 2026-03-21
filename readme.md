@@ -114,7 +114,7 @@ flowless/
 └── index.ts              # Ana giriş
 ```
 
-## Scripts
+## Scripts 
 
 | Komut | Açıklama |
 |-------|----------|
