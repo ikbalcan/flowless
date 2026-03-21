@@ -38,8 +38,9 @@ const DEFAULT_CONFIG: FlowlessConfig = {
     active: ['log_event', 'update_ticket', 'create_comment', 'generate_doc', 'notify_team'],
   },
   branchRules: {
-    main: ['generate_doc', 'notify_team'],
-    develop: ['log_event', 'create_comment'],
+    /** github_projects yoksa bile ana dalda doc+slack — gerçek ayar flowless.config.yaml ile gelir */
+    main: ['update_github_project', 'generate_doc', 'notify_team'],
+    develop: ['update_github_project', 'log_event', 'create_comment'],
   },
   default: ['log_event'],
 }
@@ -83,11 +84,24 @@ export function getProjectRoot(): string {
   return findConfigDir()
 }
 
+/** Son yüklenen flowless.config.yaml tam yolu (yoksa null) */
+let lastResolvedConfigPath: string | null = null
+
+export function getResolvedConfigPath(): string | null {
+  return lastResolvedConfigPath
+}
+
 export function loadConfig(): FlowlessConfig {
   const configDir = findConfigDir()
   const configPath = join(configDir, 'flowless.config.yaml')
 
   if (!existsSync(configPath)) {
+    lastResolvedConfigPath = null
+    console.warn(
+      '[Flowless] flowless.config.yaml bulunamadı (aranan dizinler: dist üstü, cwd). ' +
+        'Varsayılan config kullanılıyor — github_projects ve branch kuralları devreye girmez. ' +
+        'Uygulamayı repo kökünde veya yaml\'ın olduğu dizinden çalıştırın.'
+    )
     return DEFAULT_CONFIG
   }
 
@@ -95,7 +109,8 @@ export function loadConfig(): FlowlessConfig {
     const content = readFileSync(configPath, 'utf-8')
     const parsed = parseYaml(content) as Partial<FlowlessConfig>
     const expanded = expandEnvInConfig(parsed) as Partial<FlowlessConfig>
-    return {
+    lastResolvedConfigPath = configPath
+    const merged: FlowlessConfig = {
       ...DEFAULT_CONFIG,
       ...expanded,
       project: { ...DEFAULT_CONFIG.project, ...expanded.project },
@@ -104,8 +119,14 @@ export function loadConfig(): FlowlessConfig {
         ...expanded.tools,
       },
     }
+    console.log(`[Flowless] Config: ${configPath}`)
+    if (merged.github_projects?.transitions && Object.keys(merged.github_projects.transitions).length > 0) {
+      console.log('[Flowless] github_projects: aktif (transitions tanımlı)')
+    }
+    return merged
   } catch (err) {
     console.warn('[Flowless] Config parse hatası:', err)
+    lastResolvedConfigPath = null
     return DEFAULT_CONFIG
   }
 }

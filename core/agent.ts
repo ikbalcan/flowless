@@ -32,6 +32,26 @@ function shouldInjectUpdateGithubProject(
   return Boolean(gp.transitions[t])
 }
 
+/**
+ * github_projects tanımlıysa branch kuralında unutulsa bile update_github_project listeye eklenir
+ * (aksi halde sadece generate_doc + notify_team görünürdü).
+ */
+function augmentAllowedToolsForGithubProjects(
+  allowed: string[],
+  config: FlowlessConfig,
+  event: FlowlessEvent,
+  branch: string | undefined
+): string[] {
+  const gp = config.github_projects
+  const hasTransitions = gp?.transitions && Object.keys(gp.transitions).length > 0
+  if (!hasTransitions || event.source !== 'github') return allowed
+  if (allowed.includes('update_github_project')) return allowed
+  console.log(
+    `[Flowless] Branch "${branch ?? '?'}": update_github_project branch kurallarında yoktu; github_projects için listeye eklendi.`
+  )
+  return [...allowed, 'update_github_project']
+}
+
 function mergeUpdateGithubProjectSelection(
   selections: Array<{ tool: string; params: Record<string, unknown>; reasoning: string }>
 ): Array<{ tool: string; params: Record<string, unknown>; reasoning: string }> {
@@ -101,7 +121,13 @@ export class Agent {
 
   async processEvent(event: FlowlessEvent): Promise<ProcessedAction[]> {
     const branch = this.getBranchFromEvent(event)
-    const allowedTools = getToolsForBranch(this.agentConfig.config, branch)
+    let allowedTools = getToolsForBranch(this.agentConfig.config, branch)
+    allowedTools = augmentAllowedToolsForGithubProjects(
+      allowedTools,
+      this.agentConfig.config,
+      event,
+      branch
+    )
 
     const allTools = getAllTools()
     const toolDescriptions = new Map(
@@ -135,11 +161,21 @@ export class Agent {
 
     let selections = this.parseToolSelection(rawResponse)
 
-    if (
-      allowedTools.includes('update_github_project') &&
-      shouldInjectUpdateGithubProject(this.agentConfig.config, event)
-    ) {
-      selections = mergeUpdateGithubProjectSelection(selections)
+    if (shouldInjectUpdateGithubProject(this.agentConfig.config, event)) {
+      if (allowedTools.includes('update_github_project')) {
+        selections = mergeUpdateGithubProjectSelection(selections)
+      } else {
+        console.warn(
+          '[Flowless] github_projects için otomatik tool atlandı: allowedTools içinde update_github_project yok.'
+        )
+      }
+    } else if (event.source === 'github' && event.type === 'commit_pushed') {
+      const gp = this.agentConfig.config.github_projects
+      if (!gp?.transitions || Object.keys(gp.transitions).length === 0) {
+        console.log(
+          '[Flowless] update_github_project enjeksiyonu yok: config.github_projects.transitions tanımlı değil (yaml yüklendi mi?).'
+        )
+      }
     }
 
     // Sıra: update_github_project (önce statü) → generate_doc → notify_team → ...

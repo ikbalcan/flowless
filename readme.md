@@ -103,6 +103,13 @@ github_projects:
 
 `github_projects` + ilgili `transitions` tanımlıysa ve branch kurallarında `update_github_project` varsa, agent **GitHub statü tool'unu LLM seçmese bile otomatik ekler** (mesajda `#issue` yoksa tool yine no-op).
 
+### Sorun giderme: Sadece doc + Slack çalışıyor
+
+1. **Başlangıçta** konsolda `flowless.config.yaml bulunamadı` görüyorsan uygulama varsayılan config kullanıyor; `github_projects` yüklenmez. Uygulamayı `flowless.config.yaml` dosyasının olduğu dizinden çalıştır veya dosya yolunu kontrol et.
+2. Başarılı yüklemede şunu görmelisin: `Config: .../flowless.config.yaml` ve `github_projects: aktif`.
+3. **Commit mesajında** ilgili repodaki issue için `#12` gibi referans olmalı; Projects’e eklediğin kart **repo issue’su** olmalı (yalnızca proje içi taslak “task” issue numarası üretmez).
+4. `GITHUB_TOKEN` için `project` scope ve ilgili repo/org erişimi gerekir.
+
 ## Proje Yapısı
 
 ```

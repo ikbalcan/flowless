@@ -94,6 +94,18 @@ interface ProjectInfo {
   statusOptions: Map<string, string>
 }
 
+type ProjectScanPage = {
+  node?: {
+    items?: {
+      pageInfo: { hasNextPage: boolean; endCursor?: string }
+      nodes: Array<{
+        id: string
+        content?: { number?: number; repository?: { nameWithOwner?: string } }
+      }>
+    }
+  }
+}
+
 async function getProjectInfo(
   token: string,
   owner: string,
@@ -178,7 +190,11 @@ async function findProjectItemByIssue(
           projectItems(first: 50) {
             nodes {
               id
-              project { id }
+              project {
+                ... on ProjectV2 {
+                  id
+                }
+              }
             }
           }
         }
@@ -198,7 +214,72 @@ async function findProjectItemByIssue(
   if (!issue) return null
 
   const item = issue.projectItems?.nodes?.find((n) => n.project?.id === projectId)
-  return item?.id ?? null
+  if (item?.id) return item.id
+
+  return findProjectItemByScanningProject(
+    token,
+    projectId,
+    repoOwner,
+    repoName,
+    issueNumber
+  )
+}
+
+/** Issue.projectItems boş veya eşleşmezse projede issue kartını tarar */
+async function findProjectItemByScanningProject(
+  token: string,
+  projectId: string,
+  repoOwner: string,
+  repoName: string,
+  issueNumber: number
+): Promise<string | null> {
+  const fullName = `${repoOwner}/${repoName}`
+  let cursor: string | null = null
+  for (let page = 0; page < 10; page++) {
+    const query = `
+      query($projectId: ID!, $after: String) {
+        node(id: $projectId) {
+          ... on ProjectV2 {
+            items(first: 100, after: $after) {
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+              nodes {
+                id
+                content {
+                  ... on Issue {
+                    number
+                    repository {
+                      nameWithOwner
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    `
+    const pageData: ProjectScanPage = await ghGraphql<ProjectScanPage>(token, query, {
+      projectId,
+      after: cursor,
+    })
+
+    const pageItems = pageData.node?.items
+    if (!pageItems?.nodes?.length) return null
+
+    for (const n of pageItems.nodes) {
+      const c = n.content
+      if (c?.number === issueNumber && c.repository?.nameWithOwner === fullName) {
+        return n.id
+      }
+    }
+
+    if (!pageItems.pageInfo.hasNextPage || !pageItems.pageInfo.endCursor) break
+    cursor = pageItems.pageInfo.endCursor
+  }
+  return null
 }
 
 async function updateItemStatus(
