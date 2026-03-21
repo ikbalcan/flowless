@@ -91,9 +91,13 @@ github_projects:
   project_number: 1
   transitions:
     commit_pushed: "In Progress"
+    commit_pushed_completed: "Done"   # closes #1, tamamlandı, done, … ile push
     pr_opened: "In Review"
     pr_merged: "Done"
 ```
+
+- **Normal push** (`#1 yeni özellik`): issue **In Progress** olur.
+- **Tamamlanma** (`closes #1`, `fixes #2`, mesajda *tamamlandı* / *done* / *completed* vb.): issue **Done** olur (Todo’da olsa bile kart statüsü güncellenir).
 
 Örnek: `git commit -m "#1 add new feature"` → Flowless issue #1'i "In Progress" yapar, doc üretir, Slack'e haber verir.
 

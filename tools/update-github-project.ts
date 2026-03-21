@@ -46,6 +46,28 @@ export function extractIssueRefs(text: string): number[] {
   return [...new Set(nums)]
 }
 
+/**
+ * Commit mesajı işin bittiğini ima ediyor mu? (Todo → Done gibi geçişler için)
+ * - GitHub: closes/fixes/resolves #N
+ * - TR: tamamlandı, geliştirme tamamlandı, vb.
+ * - EN: completed, done, finished (kelime sınırlarıyla)
+ */
+export function looksLikeCommitCompletion(text: string): boolean {
+  if (!text.trim()) return false
+  const t = text.trim()
+  // GitHub issue kapatma anahtar kelimeleri (satır başı veya gövde)
+  if (/\b(closes|closed|fix(?:es|ed)?|resolve[sd]?)\s+#?\d+/i.test(t)) return true
+  // Türkçe
+  if (/tamamland[ıi]|geliştirme\s+tamamland[ıi]|iş\s+tamam|bitti|geliştirme\s+bitti/im.test(t)) {
+    return true
+  }
+  // İngilizce (incomplete vb. yanlış pozitiften kaçın)
+  if (/\b(completed|finished)\b/i.test(t)) return true
+  if (/\bdone\b/i.test(t) && !/\b(not\s+done|isn't\s+done|incomplete)\b/i.test(t)) return true
+  if (/\bcomplete\b/i.test(t) && !/\bincomplete\b/i.test(t)) return true
+  return false
+}
+
 async function ghGraphql<T>(token: string, query: string, variables?: Record<string, unknown>): Promise<T> {
   const res = await fetch('https://api.github.com/graphql', {
     method: 'POST',
@@ -211,7 +233,7 @@ async function updateItemStatus(
 export class UpdateGitHubProjectTool implements ITool {
   name = 'update_github_project'
   description =
-    "Commit veya PR mesajından #123 formatında issue ref'ini çıkar, GitHub Projects'te ilgili issue'nun Status alanını güncelle. Mesajda #N yoksa hiçbir şey yapma. params gerektirmez, event payload'tan otomatik okunur."
+    "Commit veya PR mesajından #123 formatında issue ref'ini çıkar, GitHub Projects'te Status güncelle. Push'ta config'te commit_pushed_completed varsa ve mesaj tamamlanmayı gösteriyorsa (closes/fixes #N, tamamlandı, done) Done'a al; aksi halde commit_pushed statüsü. Mesajda #N yoksa no-op."
 
   async execute(
     ctx: IToolContext
@@ -229,10 +251,6 @@ export class UpdateGitHubProjectTool implements ITool {
     }
 
     const eventType = ctx.event.type
-    const targetStatus = cfg.transitions[eventType]
-    if (!targetStatus) {
-      return { success: true, data: { skipped: 'no_transition', eventType } }
-    }
 
     const p = ctx.event.payload as Record<string, unknown>
     const repoFull = (p.repository as string) ?? (ctx.event.metadata?.repository as string) ?? ''
@@ -250,6 +268,24 @@ export class UpdateGitHubProjectTool implements ITool {
     } else if (eventType === 'pr_opened' || eventType === 'pr_merged' || eventType.startsWith('pr_')) {
       text = ((p.title as string) ?? '') + '\n' + ((p.body as string) ?? '')
     }
+
+    /** Push'ta mesaj tamamlanmayı gösteriyorsa ve config'te varsa Done (veya başka) statü */
+    let targetStatus: string | undefined
+    if (eventType === 'commit_pushed') {
+      const doneTransition = cfg.transitions.commit_pushed_completed
+      if (doneTransition && looksLikeCommitCompletion(text)) {
+        targetStatus = doneTransition
+      } else {
+        targetStatus = cfg.transitions.commit_pushed
+      }
+    } else {
+      targetStatus = cfg.transitions[eventType]
+    }
+
+    if (!targetStatus) {
+      return { success: true, data: { skipped: 'no_transition', eventType } }
+    }
+
     const issueNumbers = extractIssueRefs(text)
     if (issueNumbers.length === 0) {
       return { success: true, data: { skipped: 'no_issue_ref' } }

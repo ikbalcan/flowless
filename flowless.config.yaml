@@ -22,6 +22,8 @@ github_projects:
   project_number: 8
   transitions:
     commit_pushed: "In Progress"
+    # Commit mesajı tamamlanmayı gösteriyorsa (closes #N, tamamlandı, done, …) → bu statü
+    commit_pushed_completed: "Done"
     pr_opened: "In Review"
     pr_merged: "Done"
 
