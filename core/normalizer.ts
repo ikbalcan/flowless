@@ -199,6 +199,7 @@ export interface GitHubPullRequestPayload {
     title?: string
     body?: string
     state?: string
+    merged?: boolean
     html_url?: string
     head?: { ref?: string; sha?: string }
     base?: { ref?: string; sha?: string }
@@ -218,9 +219,10 @@ export function normalizeGitHubPullRequest(
 ): FlowlessEvent {
   const pr = payload.pull_request
   const action = payload.action ?? 'unknown'
+  const merged = pr?.merged === true
   const typeMap: Record<string, string> = {
     opened: 'pr_opened',
-    closed: 'pr_closed',
+    closed: merged ? 'pr_merged' : 'pr_closed',
     reopened: 'pr_reopened',
     synchronize: 'pr_updated',
   }

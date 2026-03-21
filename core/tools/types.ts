@@ -13,8 +13,11 @@ export interface IToolContext {
   llm?: ILLMProvider
   /** Proje kök dizini */
   projectRoot?: string
-  /** Flowless config (slack_webhook_url vb.) */
-  config?: { slack_webhook_url?: string }
+  /** Flowless config (slack_webhook_url, github_projects vb.) */
+  config?: {
+    slack_webhook_url?: string
+    github_projects?: import('../../config/loader.js').GitHubProjectsConfig
+  }
   /** Bu event için seçilen tool listesi (notify_team mesajında kullanılır) */
   selections?: Array<{ tool: string }>
   /** Bu pipeline'da önce çalışan tool'ların sonuçları (generate_doc → notify_team geçişi için) */

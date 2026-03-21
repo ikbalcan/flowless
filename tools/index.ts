@@ -6,6 +6,7 @@
 import type { ITool } from '../core/tools/types.js'
 import { LogEventTool } from './log-event.js'
 import { UpdateTicketTool } from './update-ticket.js'
+import { UpdateGitHubProjectTool } from './update-github-project.js'
 import { CreateCommentTool } from './create-comment.js'
 import { GenerateDocTool } from './generate-doc.js'
 import { NotifyTeamTool } from './notify-team.js'
@@ -13,6 +14,7 @@ import { NotifyTeamTool } from './notify-team.js'
 const TOOL_CLASSES: (new () => ITool)[] = [
   LogEventTool,
   UpdateTicketTool,
+  UpdateGitHubProjectTool,
   CreateCommentTool,
   GenerateDocTool,
   NotifyTeamTool,

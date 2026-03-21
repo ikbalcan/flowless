@@ -32,6 +32,7 @@ npm start
 | `GITHUB_WEBHOOK_SECRET` | Hayır | GitHub webhook imza doğrulaması. Yoksa mock input kullanılır |
 | `WEBHOOK_PORT` | Hayır | Webhook portu (varsayılan: 3000) |
 | `SLACK_WEBHOOK_URL` | Hayır | Slack Incoming Webhook URL. Varsa `notify_team` gerçek Slack'e gönderir |
+| `GITHUB_TOKEN` | Hayır | GitHub Projects API erişimi için (token: \`project\` scope) |
 | `DASHBOARD_PORT` | Hayır | Dashboard portu (varsayılan: 4000) |
 
 ## Konfigürasyon
@@ -62,6 +63,7 @@ default:
 | `generate_doc` | Commit mesajı ve değişen dosyalardan Markdown dokümantasyon üretir (Özet, Değişiklikler, Etkilenen Alanlar, Önerilen Sonraki Adımlar) |
 | `notify_team` | Ekibe Slack bildirimi gönderir. `generate_doc` ile birlikte çalışırsa zengin özet kullanır |
 | `update_ticket` | Ticket güncelleme (Jira vb.) |
+| `update_github_project` | Commit/PR mesajındaki `#123` ile GitHub Projects'te issue statüsünü günceller |
 | `create_comment` | Yorum oluşturma |
 
 ### GitHub Webhook Kurulumu
@@ -77,6 +79,23 @@ default:
 1. [Slack Incoming Webhooks](https://api.slack.com/messaging/webhooks) ile webhook oluşturun
 2. URL'yi `.env` dosyasına `SLACK_WEBHOOK_URL` olarak ekleyin
 3. `main` branch'e push yapıldığında otomatik bildirim gider
+
+### GitHub Projects
+
+Commit veya PR mesajında `#123` gibi issue referansı varsa, Flowless ilgili issue'nun GitHub Projects'teki statüsünü günceller.
+
+```yaml
+# flowless.config.yaml
+github_projects:
+  token: ${GITHUB_TOKEN}
+  project_number: 1
+  transitions:
+    commit_pushed: "In Progress"
+    pr_opened: "In Review"
+    pr_merged: "Done"
+```
+
+Örnek: `git commit -m "#1 add new feature"` → Flowless issue #1'i "In Progress" yapar, doc üretir, Slack'e haber verir.
 
 ## Proje Yapısı
 

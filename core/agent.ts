@@ -99,8 +99,8 @@ export class Agent {
     })
 
     let selections = this.parseToolSelection(rawResponse)
-    // generate_doc notify_team'dan önce çalışmalı (Slack mesajı generate_doc özetini kullanır)
-    const order = { generate_doc: 0, notify_team: 1, log_event: 2, update_ticket: 3, create_comment: 4 }
+    // Sıra: update_github_project (önce statü) → generate_doc → notify_team → ...
+    const order = { update_github_project: 0, generate_doc: 1, notify_team: 2, log_event: 3, update_ticket: 4, create_comment: 5 }
     selections = [...selections].sort(
       (a, b) => (order[a.tool as keyof typeof order] ?? 5) - (order[b.tool as keyof typeof order] ?? 5)
     )

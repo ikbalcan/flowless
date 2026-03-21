@@ -11,16 +11,28 @@ tools:
   active:
     - log_event
     - update_ticket
+    - update_github_project
     - create_comment
     - generate_doc
     - notify_team
 
+# GitHub Projects — commit/PR mesajındaki #123 ile issue statüsünü günceller
+github_projects:
+  token: ${GITHUB_TOKEN}
+  project_number: 8
+  transitions:
+    commit_pushed: "In Progress"
+    pr_opened: "In Review"
+    pr_merged: "Done"
+
 # Branch kuralları — hangi branch'te hangi tool'lar çalışsın
 branchRules:
   main:
+    - update_github_project
     - generate_doc
     - notify_team
   develop:
+    - update_github_project
     - log_event
     - create_comment
 

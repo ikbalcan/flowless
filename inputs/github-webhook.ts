@@ -11,8 +11,10 @@ import type { FlowlessEvent } from '../core/interfaces.js'
 import {
   normalizeGitHubPush,
   normalizeGitHubCreate,
+  normalizeGitHubPullRequest,
   type GitHubPushPayload,
   type GitHubCreatePayload,
+  type GitHubPullRequestPayload,
 } from '../core/normalizer.js'
 
 export interface GitHubWebhookConfig {
@@ -92,7 +94,7 @@ export class GitHubWebhookInputConnector implements IInputConnector {
       return
     }
 
-    const supportedEvents = ['push', 'create']
+    const supportedEvents = ['push', 'create', 'pull_request']
     if (!supportedEvents.includes(eventType)) {
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ received: true, skipped: `Event type: ${eventType}` }))
@@ -109,6 +111,8 @@ export class GitHubWebhookInputConnector implements IInputConnector {
         event = normalizeGitHubPush(payload as GitHubPushPayload, delivery)
       } else if (eventType === 'create') {
         event = normalizeGitHubCreate(payload as GitHubCreatePayload, delivery)
+      } else if (eventType === 'pull_request') {
+        event = normalizeGitHubPullRequest(payload as GitHubPullRequestPayload, delivery)
       } else {
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ received: true, skipped: `Event type: ${eventType}` }))
